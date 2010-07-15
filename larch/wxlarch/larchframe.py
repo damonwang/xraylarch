@@ -107,8 +107,6 @@ class LarchWxShell(object):
             block, fname, lineno = self.inptext.get()
             ret = self.larch.eval(block,
                                   fname=fname, lineno=lineno)
-
-            code.interact(local=locals())
             
             if hasattr(ret, '__call__') and not isinstance(ret,type):
                 try:
@@ -249,6 +247,7 @@ class LarchFrame(wx.Frame):
         else:
             self.input.AddToHistory(text)
             wx.CallAfter(self.larchshell.execute, text) 
+            wx.CallAfter(self.datapanel.tree.display)
         event.Skip()
         
     def onResize(self, event=None):
