@@ -1,7 +1,4 @@
-try:
-    import lib as larch
-except:
-    import larch
+import larch
 import sys
 import os
 
