@@ -4,6 +4,7 @@
 
 import sys
 import os
+import code
 
 import wx
 import numpy
@@ -106,6 +107,8 @@ class LarchWxShell(object):
             block, fname, lineno = self.inptext.get()
             ret = self.larch.eval(block,
                                   fname=fname, lineno=lineno)
+
+            code.interact(local=locals())
             
             if hasattr(ret, '__call__') and not isinstance(ret,type):
                 try:
