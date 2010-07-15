@@ -153,13 +153,14 @@ class FillingTree(wx.TreeCtrl):
         self.ntop = 0
         if isinstance(obj, SymbolTable)   or isinstance(obj, Group):
             return obj._publicmembers()
-        if isinstance(obj, (int, float, bool)) or (isinstance(obj, dict) and hasattr(obj, 'keys')):
+        elif isinstance(obj, (int, float, bool, str)):
+            return None
+        elif isinstance(obj, dict) and hasattr(obj, 'keys'):
             return obj
         elif isinstance(obj, (list, tuple)):
             for n in range(len(obj)):
                 key = '[' + str(n) + ']'
                 d[key] = obj[n]
-            
         elif not hasattr(obj, '__call__'):
             for key in introspect.getAttributeNames(obj):
                 # Believe it or not, some attributes can disappear,
@@ -167,7 +168,13 @@ class FillingTree(wx.TreeCtrl):
                 # module. So this is nested in a try block.
                 try:
                     if not (key.startswith('__') and key.endswith('__')):
-                        d[key] = getattr(obj, key)
+                        a = getattr(obj, key)
+                        if callable(a):
+                            try:
+                                d["callables"][key] = a
+                            except KeyError, e:
+                                d["callables"] = dict(key=a)
+                        else: d[key] = a
                 except:
                     pass
         return d
