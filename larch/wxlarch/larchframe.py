@@ -139,25 +139,22 @@ class LarchFrame(wx.Frame):
 
 
     def InputPanel(self, parent):
-        panel = wx.Panel(parent, -1)
         pstyle = wx.ALIGN_CENTER|wx.ALIGN_RIGHT
-        self.prompt = wx.StaticText(panel, -1, 'Larch>',
+        self.prompt = wx.StaticText(parent, -1, 'Larch>',
                                     size = (65,-1),
                                     style = pstyle)
-        self.input = ReadlineTextCtrl(panel, -1,  '', size=(500,-1),
-                                 historyfile=None, mode='emacs',
-                                 style=wx.ALIGN_LEFT|wx.TE_PROCESS_ENTER)
+        input = ReadlineTextCtrl(parent, -1,  '', size=(500,-1),
+                            historyfile=None, mode='emacs',
+                            style=wx.ALIGN_LEFT|wx.TE_PROCESS_ENTER)
         
-        self.input.Bind(wx.EVT_TEXT_ENTER, self.onText)
-        self.input.notebooks = self.nbook
+        input.Bind(wx.EVT_TEXT_ENTER, self.onText)
+        input.notebooks = self.nbook
         
         sizer = wx.BoxSizer(wx.HORIZONTAL)
 
         sizer.Add(self.prompt,  0, wx.BOTTOM|wx.CENTER)
-        sizer.Add(self.input,   1, wx.ALIGN_LEFT|wx.ALIGN_CENTER|wx.EXPAND)
-        panel.SetSizer(sizer)
-        sizer.Fit(panel)
-        return panel
+        sizer.Add(input,   1, wx.ALIGN_LEFT|wx.ALIGN_CENTER|wx.EXPAND)
+        return sizer, input
         
     def BuildFrame(self, parent=None, **kwds):
         wx.Frame.__init__(self, parent, -1, size=(600,400),
@@ -199,8 +196,11 @@ class LarchFrame(wx.Frame):
         opts = dict(flag=wx.ALIGN_CENTER_VERTICAL|wx.ALL|wx.EXPAND,
                     border=2)
 
+        inputsizer, self.input = self.InputPanel(self)
+
         sizer.Add(nbook,  1, **opts)
-        sizer.Add(self.InputPanel(self),  0, **opts)
+        sizer.Add(inputsizer,  0, **opts)
+        self.input.MoveBeforeInTabOrder(nbook)
         
         self.SetSizer(sizer)
         self.Refresh()
