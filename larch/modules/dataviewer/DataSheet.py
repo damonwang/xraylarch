@@ -52,6 +52,9 @@ class DataSheet(wx.Panel):
         self.sizer = wx.BoxSizer(wx.VERTICAL)
         self.SetSizer(self.sizer)
 
+        # If we can read the file without throwing an error, let's say we're
+        # the right filetype. But if we aren't, need to Destroy() ourselves or
+        # the wx framework will prevent interpreter from garbage-collecting us
         try:
             self.data = self.readData(file=self.filename)
         except FileTypeError, e:
@@ -63,10 +66,6 @@ class DataSheet(wx.Panel):
         self.sizer.SetSizeHints(self)
         self.Layout()
     
-    def onEvent(self, event):
-        '''just pops up a MesssageBox announcing the event'''
-        pass
-
     def getCtrls(self, *args):
         '''collects the values of all controls
         

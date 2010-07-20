@@ -692,9 +692,7 @@ class Interpreter:
             # first look for "name.lar"
             islarch = False
             larchname = "%s.lar" % name
-            for dirname in st_sys.path:
-                if not os.path.exists(dirname):
-                    continue
+            for dirname in [ p for p in st_sys.path if os.path.exists(p) ]:
                 if larchname in os.listdir(dirname):
                     islarch = True
                     modname = os.path.abspath(os.path.join(dirname, larchname))
