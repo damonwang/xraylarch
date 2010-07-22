@@ -2,8 +2,8 @@ import larch
 import sys
 import os
 
-interp = larch.interp()
-input  = larch.input()
+interp = larch.Interpreter()
+input  = larch.InputText()
 
 def doFile(inputfile,output=None):
     try:
