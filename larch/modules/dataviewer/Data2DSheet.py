@@ -35,14 +35,14 @@ class Data2DSheet(DataSheet):
     def mkPanelPlot(self):
         '''creates the initial panel plot, before user can choose anything.
 
-        assign the plot into self.plot
+        assign the plot into self.plotpanel
         add it into self.sizer
         '''
         print(" mkPanelPlot ")
-        self.plot = MPlot.ImagePanel(parent=self)
-        self.plot.SetMinSize((400,300))
-        self.plot.SetSize(self.plot.GetMinSize())
-        self.sizer.AddF(item=self.plot, 
+        self.plotpanel = MPlot.ImagePanel(parent=self)
+        self.plotpanel.SetMinSize((400,300))
+        self.plotpanel.SetSize(self.plotpanel.GetMinSize())
+        self.sizer.AddF(item=self.plotpanel, 
                 flags=wx.SizerFlags(1).Expand().Center().Border())
 
     def mkNewFrame(self, name="New Frame"):
@@ -54,7 +54,7 @@ class Data2DSheet(DataSheet):
         return rv
 
     
-    def doPlot(self, dataSrc, dest):
+    def plot(self, dataSrc, dest):
         '''plots the named data to destination
 
         Args:
@@ -68,7 +68,7 @@ class Data2DSheet(DataSheet):
         dest.redraw()
 
     def getDataChoice(self):
-        '''returns something that can be passed as dataSrc argument to doPlot'''
+        '''returns something that can be passed as dataSrc argument to plot'''
 
         return self.getCtrls("Data")
 

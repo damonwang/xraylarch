@@ -101,7 +101,7 @@ class DataSheet(wx.Panel):
         print("destChoice = %s" % destChoice)
 
         if self.isPanel(destChoice):
-            dest = self.plot
+            dest = self.plotpanel
         elif self.isNewFrame(destChoice):
             dest = self.mkNewFrame(name=self.getPlotName())
         elif self.isExistingFrame(destChoice):
@@ -116,7 +116,7 @@ class DataSheet(wx.Panel):
         '''reads ctrls and plots
         
         Args:
-            kwargs passed in get passed to doPlot. Use a closure to set these.'''
+            kwargs passed in get passed to plot. Use a closure to set these.'''
 
         try: # what data should we plot?
             dataSrc = self.getDataChoice()
@@ -131,7 +131,7 @@ class DataSheet(wx.Panel):
                     given: %s''' % e.message)
             return
 
-        self.doPlot(dataSrc, dest, **kwargs)
+        self.plot(dataSrc, dest, **kwargs)
 
         # TODO: cruft to refactor
         destChoice = self.getCtrls("Plot")
@@ -188,7 +188,7 @@ class DataSheet(wx.Panel):
         raise NotImplementedError("readData")
     def getDataChoice(self):
         raise NotImplementedError("getDataChoice")
-    def doPlot(self, dataSrc, dest):
+    def plot(self, dataSrc, dest):
         raise NotImplementedError("plot")
     def getPlotName(self):
         raise NotImplementedError("getPlotName")

@@ -1,3 +1,5 @@
+import sys 
+
 import wx
 import MPlot
 from WxUtil import *
@@ -11,34 +13,35 @@ class Data1DSheet(DataSheet):
 
         self.onPlot(event, overplot=True)
 
-    def doPlot(self, dataSrc, dest, **kwargs):
+    def plot(self, dataSrc=None, dest=None, x=None, y=None, **kwargs):
         '''plots the named data to destination
 
         Args:
             dataSrc: dict { var : name }, name suitable for passing to getData
             dest: something with a plot method
         '''
+    
+        if dest is None:
+            dest = self.plotpanel
 
-        X = self.getXData(name=dataSrc["X"])
-        Y = self.getYData(name=dataSrc["Y"])
-        name = self.getPlotName(x=dataSrc["X"], y=dataSrc["Y"])
+        try:
+            if x is None:
+                x = self.getXData(name=dataSrc["X"])
+            if y is None:
+                y = self.getYData(name=dataSrc["Y"])
+        except (TypeError, KeyError):
+            print >> sys.stderr, "must either provide the data via x, y arguments, or else name the sources via dataSrc argument."
 
         if kwargs.get("overplot", False):
-            self.writeOut("Overplotting %s" % name)
             try:
-                dest.oplot(X, Y)
-            except AttributeError, e:
-                if e.message == "'PlotPanel' object has no attribute 'data_range'":
-                    wx.MessageBox("cannot overplot before plotting. Will plot instead.")
-                    self.doPlot(dataSrc, dest, overplot=False)
-                else:
-                    raise e
+                dest.oplot(x, y)
+            except AttributeError:
+                self.plot(dataSrc, dest, overplot=False)
         else:
-            self.writeOut("Plotting %s" % name)
-            dest.plot(X, Y)
+            dest.plot(x, y)
 
     def getDataChoice(self):
-        '''returns something that can be passed as dataSrc argument to doPlot'''
+        '''returns something that can be passed as dataSrc argument to plot'''
 
         return self.getCtrls("X", "Y")
 
@@ -75,14 +78,14 @@ class Data1DSheet(DataSheet):
     def mkPanelPlot(self):
         '''creates the initial panel plot, before user can choose anything.
 
-        assign the plot into self.plot
+        assign the plot into self.plotpanel
         add it into self.sizer
         '''
 
-        self.plot = MPlot.PlotPanel(parent=self)
-        self.plot.SetMinSize((400,300))
-        self.plot.SetSize(self.plot.GetMinSize())
-        self.sizer.AddF(item=self.plot, 
+        self.plotpanel = MPlot.PlotPanel(parent=self)
+        self.plotpanel.SetMinSize((400,300))
+        self.plotpanel.SetSize(self.plotpanel.GetMinSize())
+        self.sizer.AddF(item=self.plotpanel, 
                 flags=wx.SizerFlags(1).Expand().Center().Border())
 
     def mkNewFrame(self, name="New Frame"):

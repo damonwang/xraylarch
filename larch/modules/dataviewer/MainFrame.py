@@ -102,6 +102,11 @@ class MainFrame(Frame):
         self.sizer.SetSizeHints(self)
         self.Layout()
 
+    def open(self, *args, **kwargs):
+        '''shorter alias for openDataSheet, for interactive command-line use.'''
+
+        self.openDataSheet(*args, **kwargs)
+
     def openDataSheet(self, path):
         '''identifies the filetype, creates the DataSheet, adds it to the tree, and shows it.'''
 
