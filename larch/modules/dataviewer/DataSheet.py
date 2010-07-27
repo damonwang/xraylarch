@@ -57,7 +57,7 @@ class DataSheet(wx.Panel):
         # the wx framework will prevent interpreter from garbage-collecting us
         try:
             self.data = self.readData(file=self.filename)
-        except FileTypeError, e:
+        except (IOError, FileTypeError), e:
             self.Destroy()
             raise e
         self.mkCtrls()

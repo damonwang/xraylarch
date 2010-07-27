@@ -71,19 +71,10 @@ class MainFrame(Frame):
         dlg = wx.FileDialog(parent=self, message="Choose a data file",
             defaultDir=os.getcwd(), style=wx.OPEN | wx.CHANGE_DIR | wx.MULTIPLE)
 
-        ds = None
         if dlg.ShowModal() == wx.ID_OK:
             for path in dlg.GetPaths():
-                ds = self.openDataSheet(path)
+                self.openDataSheet(path)
         dlg.Destroy()
-
-        #if ds is not None and ds != self.splitW.GetWindow2():
-        #    self.showRightPane(ds)
-
-        #print("\n".join(_reportPedigree(self)), file=sys.stderr)
-
-        self.sizer.SetSizeHints(self)
-        self.sizer.Layout()
 
     def configMenuBar(self):
         '''returns suitable createMenuBar input for the desired menu bar'''
@@ -133,6 +124,9 @@ class MainFrame(Frame):
                 break;
             except FileTypeError:
                 pass
+            except IOError, e:
+                wx.MessageBox("Tried to open %s, got error:\n%s" % 
+                        (e.filename, e.strerror))
         if ds is not None:
             self.datasheets.append(ds)
             self.tree.SetItemPyData(item=item, obj=ds)
@@ -141,5 +135,5 @@ class MainFrame(Frame):
             self.tree.Delete(item)
             wx.MessageBox("could not recognize filetype")
 
-        return ds
-
+        self.sizer.SetSizeHints(self)
+        self.sizer.Layout()
