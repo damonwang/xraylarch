@@ -5,6 +5,8 @@ import copy
 from glob import glob
 import help
 
+from .symboltable import Group, GroupAlias
+
 helper = help.Helper()
 
 # inherit these from python's __builtins__
@@ -67,6 +69,8 @@ numpy_renames ={'ln':'log',
                  
 ##
 ## More builtin commands, to set up the larch language:
+## Closures will be used to make sure these are always called with a valid
+## larch interpreter as the larch parameter.
 ##
 def _group(larch=None,**kw):
     """create a group"""
@@ -223,6 +227,21 @@ def _help(*args,**kws):
 
     return helper.getbuffer()
 
+def _cs(namespace, larch=None, **kws):
+    '''change the symbol table to alter how names are resolved.
+
+    This is a convenience function for interactive use which lets the user
+    specify the namespace (larch Group) in which to look first. If namespace is
+    not already a Group, then a GroupAlias is made for it.
+
+    Args:
+        namespace
+    '''
+
+    if larch is None: return
+    if not isinstance(namespace, Group):
+        namespace = GroupAlias(obj=namespace, name="Alias for %s" % namespace)
+    larch.symtable._sys.localGroup = namespace
     
 local_funcs = {'group':_group,
                'showgroup':_showgroup,
@@ -235,5 +254,6 @@ local_funcs = {'group':_group,
                'which': _which,                
                'cwd': _cwd, 
                'help': _help,
+               'cs': _cs
                }
        

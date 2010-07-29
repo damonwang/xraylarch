@@ -1,4 +1,5 @@
 import wx
+from re import sub
 
 padding = 5
 axes = ["X", "Y"]
@@ -92,4 +93,14 @@ def reportPedigree(self):
                     for child in self.Children if "Children" in dir(child)
             ], [])
         
+def munge(name):
+    '''takes the basename and substitutes underscores (_) for illegal
+    characters to make a valid Python identifier.
 
+    Args:
+        path: path to be munged
+
+    Returns: a string that can be used for setattr's name arg
+    '''
+
+    return sub(r"[^\w]", "_", name)

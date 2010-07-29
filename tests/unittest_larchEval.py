@@ -31,8 +31,11 @@ class TestLarchEval(unittest.TestCase):
         self.li('''
 n = 0
 while n < 8:
-    n += 1''')
+    n += 1
+''')
+        self.li('n+=1')
 
+        print self.li.symtable.n
         self.assertTrue(self.li.symtable.n == 8)
 
     def test_cmp(self):
@@ -63,6 +66,9 @@ no = False
 nottrue = False
 a = arange(7)''')
 
+        self.true("yes")
+        self.false("no")
+        self.false("nottrue")
         self.false("yes and no or nottrue")
         self.false("yes and (no or nottrue)")
         self.false("(yes and no) or nottrue")
@@ -70,6 +76,9 @@ a = arange(7)''')
         self.true("yes or (no and nottrue)")
         self.false("(yes or no) and nottrue")
         self.true("yes or not no")
+        self.true("(yes or no)")
+        self.false("not (yes or yes)")
+        self.false("not (yes or no)")
         self.false("not (no or yes)")
         self.true("not no or yes")
         self.false("not yes")
@@ -135,4 +144,4 @@ class TestParse(unittest.TestCase):
 if __name__ == '__main__':
     for suite in (TestParse, TestLarchEval):
         suite = unittest.TestLoader().loadTestsFromTestCase(suite)
-        unittest.TextTestRunner(verbosity=2).run(suite)
+        unittest.ColoredTextTestRunner(verbosity=2).run(suite)

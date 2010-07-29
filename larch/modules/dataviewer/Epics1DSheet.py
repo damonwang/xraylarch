@@ -2,6 +2,7 @@ import os
 import numpy
 
 from Data1DSheet import Data1DSheet
+from WxUtil import munge
 import escan_data as ED
 from Exceptions import *
 
@@ -50,3 +51,10 @@ class Epics1DSheet(Data1DSheet):
             return rv
         else: raise FileTypeError(file)
 
+    def setDataAttr(self):
+        '''adds each possible data series as an attribute.'''
+
+        for getNames, getData in [(self.getXDataNames, self.getXData),
+                (self.getYDataNames, self.getYData)]:
+            for name in getNames():
+                setattr(self, munge(name), getData(name))

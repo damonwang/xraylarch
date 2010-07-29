@@ -62,6 +62,7 @@ class DataSheet(wx.Panel):
             raise e
         self.mkCtrls()
         self.mkPanelPlot()
+        self.setDataAttr()
 
         self.sizer.SetSizeHints(self)
         self.Layout()
@@ -194,4 +195,6 @@ class DataSheet(wx.Panel):
         raise NotImplementedError("getPlotName")
     def mkNewFrame(self, name):
         raise NotImplementedError("mkNewFrame")
+    def setDataAttr(self):
+        raise NotImplementedError("setDataAttr")
 

@@ -41,6 +41,7 @@ class Group(object):
         return '<Group>'
 
     def __id__(self):
+        # FIXME what does this accomplish?
         return (id(self))
 
     def __setattr__(self, attr, val):
@@ -72,6 +73,65 @@ class Group(object):
                     key.startswith('_SymbolTable__') or
                     key == '_main' or key == '__name__'):
                 r[key] = self.__dict__[key]
+        return r
+
+class GroupAlias(Group):
+    """Group: a container for variables, modules, and subgroups.
+    GroupAlias lets you use a regular Python object like a Group
+
+    Methods
+    ----------
+       _subgroups(): return sorted list of subgroups
+       _members():   return sorted list of all members
+       _publicmembers():   return sorted list of 'public' members
+
+    """
+    def __init__(self, obj, name=None, **kws):
+        #Group.__init__(self, name, **kws)
+        self.__dict__['obj'] = obj
+            
+    def __setattr__(self, attr, val):
+        """set group attributes."""
+        setattr(self.obj, attr, val)
+
+    def __getattr__(self, attr, default=None):
+        '''get group attributes by punting to underlying object.'''
+        
+        '''It's important that we overrode getattr rather than getattribute.
+        The first is called when the usual places (the instance and self's
+        class tree) don't have the attribute; the second is called for every
+        attribute access. Overriding getattribute is a great way to exceed the
+        recursion limit.
+        '''
+        if default is not None:
+            return getattr(self.obj, attr, default)
+        else: return getattr(self.obj, attr)
+
+    def __dir__(self):
+        "return sorted list of names of member"
+        return sorted([key for key in self.obj.__dict__
+                       if (not key.startswith('_Group__') and
+                           not key.startswith('_SymbolTable__') and
+                           not key == '_main' and                           
+                           not key == '__name__')])
+   
+    def _subgroups(self):
+        "return sorted list of names of members that are sub groups"
+        return sorted([k for k, v in list(self.obj.__dict__.items())
+                       if isgroup(v)])
+    
+    def _members(self):
+        "sorted member list"
+        return sorted(self.obj.__dict__)
+
+    def _publicmembers(self):
+        "sorted member list"
+        r = {}
+        for key in self._members():
+            if not (key.startswith('_Group__') or
+                    key.startswith('_SymbolTable__') or
+                    key == '_main' or key == '__name__'):
+                r[key] = self.obj.__dict__[key]
         return r
 
 class InvalidName:

@@ -1,6 +1,7 @@
 import wx
 import sys
 import os
+from re import sub
 
 from WxUtil import *
 from Exceptions import *
@@ -140,5 +141,8 @@ class MainFrame(Frame):
             self.tree.Delete(item)
             wx.MessageBox("could not recognize filetype")
 
+        setattr(self, munge(os.path.basename(path)), ds)
+
         self.sizer.SetSizeHints(self)
         self.sizer.Layout()
+
