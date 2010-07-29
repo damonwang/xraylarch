@@ -1,9 +1,10 @@
 '''Main Larch interpreter
 '''
-from __future__ import division, print_function
+from __future__ import division, print_function, with_statement
 import os
 import sys
 import ast
+from code import interact
 try:
     import numpy
     HAS_NUMPY = True
@@ -53,7 +54,29 @@ def iscallable(obj):
 if sys.version_info[0] == 2:
     def iscallable(obj):
         return callable(obj) or hasattr(obj, '__call__')
-        
+
+# TODO test
+def find_larchrcs():
+    '''finds the user larchrc files. Tries in this order:
+    1. $LARCHRC
+    2. $HOME/.larchrc
+    3. $USERPROF/_larchrc (Windows)
+    '''
+
+    larchrc = os.getenv('LARCHRC')
+    if larchrc is not None:
+        if os.path.isfile(larchrc):
+            return larchrc 
+
+    # try UNIX and then Windows styles
+    for var, prefix in [('HOME', '.'), ('USERPROF', '_')]:
+        homedir = os.getenv(var)
+        if homedir is not None:
+            larchrc = os.path.join(homedir, prefix + 'larchrc')
+            if os.path.isfile(larchrc):
+                return larchrc 
+    return None
+
 class Interpreter:
     """larch program compiler and interpreter.
   This module compiles expressions and statements to AST representation,
@@ -112,7 +135,64 @@ class Interpreter:
         self.node_handlers = {}
         for tnode in self.supported_nodes:
             self.node_handlers[tnode] = getattr(self, "on_%s" % tnode)
+        
+        self.read_rcfile()
 
+    def read_rcfile(self, *args):
+        '''sources an rcfile written in larch
+
+        Args: filenames of larch source code. 
+        If no args given, calls find_larchrcs().
+        '''
+
+        if args == ():
+            args = find_larchrcs()
+        if args is not None:
+            for arg in args:
+                self.eval_file(arg)
+
+    def eval_file(self, filename):
+        '''sources larch file.'''
+
+        with open(filename) as inf:
+            for line in inf:
+                rv = self.push(line)
+
+        return rv # True if file was syntactically correct
+
+    def push(self, line):
+        '''accumulates source until it has something syntactically valid, then
+        executes that and clears the buffer.
+
+        Args:
+            line: a single line of larch code
+
+        Returns:
+            True if input was executed 
+            False if ast.parse() raised 
+                SyntaxError: "unexpected EOF while parsing"
+                (more input probably required)
+        '''
+
+        try:
+            if self.push_buf != "":
+                self.push_buf += line
+            else: self.push_buf = line
+        except AttributeError, e:
+            self.push_buf = line
+
+        try:
+            parsed_code = ast.parse(self.push_buf)
+        except IndentationError, e:
+            return False
+        except SyntaxError, e:
+            if e.msg.find("unexpected EOF") != -1:
+                return False
+            else: raise e
+
+        self.interp(parsed_code)
+        self.push_buf = ""
+        return True
 
     def set_definedvariable(self, name, expr):
         """define a defined variable (re-evaluate on access)"""

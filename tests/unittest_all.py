@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import os
 import sys
 import unittest
 import optparse
@@ -77,6 +78,7 @@ class TestLarchImport(unittest.TestCase):
         self.li("import random")
 
         self.assert_(hasattr(self.li.symtable, 'random'))
+        print(dir(self.li.symtable.random))
         self.assert_(hasattr(self.li.symtable.random, 'weibull'))
         # make sure we didn't take the Python random module
         self.assert_(not hasattr(self.li.symtable.random, 'gauss'))
@@ -97,6 +99,74 @@ class TestLarchImport(unittest.TestCase):
         self.assert_(hasattr(self.li.symtable, 'wb'))
         self.assert_(hasattr(self.li.symtable.wb, '__call__'))
 
+#------------------------------------------------------------------------------
+
+class TestLarchSource(unittest.TestCase):
+    '''interpreter can source larch code from strings, files, etc.'''
+
+    def true(self, expr):
+        '''assert that larch evaluates expr to True'''
+
+        return self.assertTrue(self.li(expr))
+
+    def false(self, expr):
+        '''assert that larch evaluates expr to False'''
+
+        return self.assertFalse(self.li(expr))
+
+    def setUp(self):
+        '''creates a larch interpreter'''
+
+        self.li = larch.interpreter.Interpreter()
+
+    def test_push_expr(self):
+        '''push expression'''
+
+        self.assert_(self.li.push("1"))
+
+    def test_push_statement(self):
+        '''push a statement'''
+
+        self.assert_(self.li.push("a = 1"))
+
+    def test_push_incomplete(self):
+        '''push an incomplete construct'''
+
+        self.assert_(not self.li.push("a = "))
+        self.assert_(self.li.push("1"))
+        self.assert_(self.li.symtable.a == 1)
+
+    def test_push_SyntaxError(self):
+        '''push a syntax error'''
+
+        self.assertRaises(SyntaxError, self.li.push, "1 = a")
+
+    def test_push_buf_local(self):
+        '''push buffer is local to larch interpreter instance'''
+
+        li2 = larch.interpreter.Interpreter()
+        self.li.push("a = ")
+
+        self.assert_(not hasattr(li2, 'push_buf'))
+
+    def test_eval_file(self):
+        '''eval a larch file'''
+
+        # FIXME can't handle non-Python indentation yet
+        larchcode = '''
+a = 0
+for i in arange(10):
+    a += i
+endfor'''
+
+        fname="testingtmp"
+        with open(fname, "w") as outf:
+            print >> outf, larchcode
+
+        self.assert_(self.li.eval_file(fname))
+        self.assert_(self.li.symtable.a == 45)
+
+        os.unlink(fname)
 
 #------------------------------------------------------------------------------
 
