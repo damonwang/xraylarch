@@ -4,7 +4,7 @@ import numpy
 from Data1DSheet import Data1DSheet
 from WxUtil import munge
 import escan_data as ED
-from Exceptions import *
+from Exceptions import FileTypeError
 
 class Epics1DSheet(Data1DSheet):
 

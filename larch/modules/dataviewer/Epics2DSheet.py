@@ -2,7 +2,8 @@ import os
 
 from Data2DSheet import Data2DSheet
 import escan_data as ED
-from Exceptions import *
+from Exceptions import FileTypeError
+from WxUtil import munge
 
 class Epics2DSheet(Data2DSheet):
 
@@ -30,3 +31,8 @@ class Epics2DSheet(Data2DSheet):
             return rv
         else: raise FileTypeError(file)
 
+    def setDataAttr(self):
+        '''adds each possible data series as an attribute.'''
+
+        for name in getDataNames():
+            setattr(self, munge(name), getData(name))
