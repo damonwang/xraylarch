@@ -164,7 +164,9 @@ class SymbolTable(Group):
         self._sys.groupCache  = {'localGroup':None, 'moduleGroup':None,
                                  'searchNames':None, 'searchGroups': None}
 
-        self._sys.path         = ['.']
+        # FIXME this is only for testing until we get an rcfile parser
+        # 29 July 2010 Damon Wang
+        self._sys.path         = ['.', r'P:\\xraylarch\\larch\\modules\\']
         
         if site_config.module_path is not None:
             for idir in site_config.module_path:

@@ -24,18 +24,17 @@ class TestLarchEval(unittest.TestCase):
     def setUp(self):
         self.li = larch.Interpreter()
         self.n = lambda : self.li.symtable.n
+        self.eval = lambda expr: self.li.interp(ast.parse(expr))
 
     def test_while(self):
         '''while loops'''
 
-        self.li('''
-n = 0
+        self.eval('''
+n=0
 while n < 8:
     n += 1
 ''')
-        self.li('n+=1')
 
-        print self.li.symtable.n
         self.assertTrue(self.li.symtable.n == 8)
 
     def test_cmp(self):
