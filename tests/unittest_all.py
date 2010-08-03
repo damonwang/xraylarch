@@ -38,9 +38,10 @@ def fake_call(original, replacement):
 
 #------------------------------------------------------------------------------
 
-class TestMockCall(unittest.TestCase):
+class TestFakeCall(unittest.TestCase):
 
-    def test_1(self):
+    def test_fake_call(self):
+        '''fake_call context manager'''
         PATH = os.getenv('PATH')
         HOME = os.getenv('HOME')
         with fake_call(os.getenv, dict(HOME='here').__getitem__):
