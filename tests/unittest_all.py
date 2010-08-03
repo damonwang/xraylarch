@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 
+from __future__ import with_statement
 import os
 import sys
 import unittest
 import optparse
+from contextlib import contextmanager
 from larch.symboltable import GroupAlias
 from unittest_larchEval import TestLarchEval
 from unittest_SymbolTable import TestSymbolTable
@@ -11,74 +13,40 @@ import larch
 
 #------------------------------------------------------------------------------
 
-class mock_call:
-    def __init__(self, function, arguments, replacement):
-        '''decorator that swaps out a function when called with the given
-        arguments. To be used for testing, not production.
-
-        DOES NOT WORK
+@contextmanager
+def fake_call(original, replacement):
+        '''context manager that swaps out a function when called with the
+        given arguments. To be used for testing, not production.
 
         Args:
-            function: intercept calls to this function
-            arguments: if the arguments match these
-            replacement: then execute this function instead
+            original: function to replace
+            replacement: function that answers some (possibly improper) subset
+                of calls to original
         '''
 
+        orig_mod = sys.modules[original.__module__]
+        orig_name = original.__name__
+
         def dummy(*args, **kwargs):
-            '''intercepts calls to <function> and substitutes <replacement>'''
-            if args == arguments:
-                return replacement(*args)
-            else: return function(*args)
-
-        self.context = globals()
-        for k in self.context:
-            if self.context[k] == function:
-                print k
-                self.context[k] = dummy
-
-    def __call__(self, f, *args, **kwargs):
-        self.context.update(dict(args=args, kwargs=kwargs, f=f))
-        print kwargs
-        return eval("f(*args, **kwargs)", self.context)
+            '''intercepts calls to original and substitutes replacement'''
+            try: return replacement(*args, **kwargs)
+            except KeyError: return original(*args, **kwargs)
+    
+        setattr(orig_mod, orig_name, dummy)
+        yield
+        setattr(orig_mod, orig_name, original)
 
 #------------------------------------------------------------------------------
-
-decr = lambda x: x -1
 
 class TestMockCall(unittest.TestCase):
 
     def test_1(self):
-        @mock_call(decr, 1, lambda x: x + 1)
-        def f(x):
-            self.assert_(decr(x) == x + 1)
-
-        f(1)
-
-    def test_fake_call(self):
-        fake_call('USERPROF', 'here')
-        #with fake_call('USERPROF', 'here'):
-            #self.assert_(os.getenv('USERPROF') == 'here')
-        #self.assert_(os.getenv('USERPROF') != 'here')
-        
-#------------------------------------------------------------------------------
-
-def fake_call(object):
-
-    def __init__(self, var, result):
-
-        self.original = os.getenv
-        self.var, self.result = var, result
-
-    def dummy(arg):
-        if arg == self.var:
-            return self.result
-        else: return self.original(arg)
-
-    def __enter__(self):
-        os.getenv = dummy
-
-    def __exit__(self):
-        os.getenv = original
+        PATH = os.getenv('PATH')
+        HOME = os.getenv('HOME')
+        with fake_call(os.getenv, dict(HOME='here').__getitem__):
+            self.assert_(os.getenv('HOME') == 'here')
+            self.assert_(os.getenv('HOME') != HOME)
+            self.assert_(os.getenv('PATH') == PATH)
 
 #------------------------------------------------------------------------------
 
