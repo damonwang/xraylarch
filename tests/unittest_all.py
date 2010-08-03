@@ -5,6 +5,7 @@ import os
 import sys
 import unittest
 import optparse
+import code
 from contextlib import contextmanager
 from larch.symboltable import GroupAlias
 from unittest_larchEval import TestLarchEval
@@ -117,17 +118,17 @@ class TestLarchImport(unittest.TestCase):
     def test_larch_import(self):
         '''import entire larch module'''
 
-        self.li("import random")
+        self.li("import l_random")
 
-        self.assert_(hasattr(self.li.symtable, 'random'))
-        self.assert_(hasattr(self.li.symtable.random, 'weibull'))
+        self.assert_(hasattr(self.li.symtable, 'l_random'))
+        self.assert_(hasattr(self.li.symtable.l_random, 'weibull'))
         # make sure we didn't take the Python random module
-        self.assert_(not hasattr(self.li.symtable.random, 'gauss'))
+        self.assert_(not hasattr(self.li.symtable.l_random, 'gauss'))
 
     def test_larch_from_import(self):
         '''import larch submodule'''
 
-        self.li('from random import weibull')
+        self.li('from l_random import weibull')
 
         self.assert_(hasattr(self.li.symtable, 'weibull'))
         self.assert_(hasattr(self.li.symtable.weibull, '__call__'))
@@ -135,7 +136,7 @@ class TestLarchImport(unittest.TestCase):
     def test_larch_from_import_as(self):
         '''import larch submodule as other name'''
 
-        self.li('from random import weibull as wb')
+        self.li('from l_random import weibull as wb')
 
         self.assert_(hasattr(self.li.symtable, 'wb'))
         self.assert_(hasattr(self.li.symtable.wb, '__call__'))
@@ -175,6 +176,7 @@ class TestLarchSource(unittest.TestCase):
 
         self.assert_(not self.li.push("a = "))
         self.assert_(self.li.push("1"))
+        #code.interact(local=locals())
         self.assert_(self.li.symtable.a == 1)
 
     def test_push_SyntaxError(self):

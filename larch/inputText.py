@@ -1,5 +1,6 @@
-from __future__ import print_function
+from __future__ import print_function, with_statement
 
+import ast
 from .util import isValidName, isNumber, isLiteralStr, strip_comments
 
 def get_DefVar(text):
@@ -124,9 +125,9 @@ class InputText:
         self.input_complete = True
                 
     def readfile(self,fname):
-        fh = open(fname,'r')
-        self.put(fh.read(),filename=fname,lineno=0)
-        fh.close()
+        with open(fname) as inf:
+            for lineno, line in enumerate(inf):
+                self.put(line,filename=fname,lineno=lineno)
 
     def put(self, text, filename=None, lineno=None ):
         """add line of input code text"""
@@ -136,13 +137,19 @@ class InputText:
 
         def addText(text, lineno=None):
             self.input_complete = self.__isComplete(text)                    
-            for txt in text.split('\n'):
-                self.input_buff.append((txt, self.input_complete,
+            if len(text) == text.find('\n') + 1:
+                self.input_buff.append((text, self.input_complete,
                                         fname, self.lineno))
-                self.lineno += 1
+            else:
+                for txt in text.split('\n'):
+                    self.input_buff.append((txt, self.input_complete,
+                                            fname, self.lineno))
+                    self.lineno += 1
 
         addText(text)
         self.prompt = self.ps2
+        # FIXME while self.interactive and not self.input_complete:
+        # FIXME pull out to the shell
         if self.interactive:
             while not self.input_complete :
                 t = self.input()
@@ -154,8 +161,10 @@ class InputText:
             self.prompt = self.ps1            
             nkeys, nblock = self.convert()
 
-    def get(self):
-        """get compile-able block of python code"""
+    def get(self, error_on_empty=False):
+        """get compile-able block of python code
+        
+        Returns: (block, filename, lineno)"""
         if len(self) > 0:
             if not self._fifo[0]:
                 self._fifo.reverse()
@@ -165,7 +174,9 @@ class InputText:
             except IndexError:
                 raise IndexError('InputText out of complete text')
 
-        return self.empty_frame
+        if error_on_empty:
+            raise IndexError('InputText out of complete text')
+        else: return self.empty_frame
     
     def convert(self):
         """
@@ -177,7 +188,25 @@ class InputText:
         oneliner  = False
         startkeys = self.block_friends.keys()
 
-        self.input_buff.reverse()
+        def break_lines(buf, piece):
+            '''Args:
+                buf: list of 
+                    (code (str), complete (bool), filename (str), lineno (int)
+                piece: one more such 4-tuple
+
+            Returns: buf, with piece merged into last item, or appended to list
+            '''
+
+            # does last item's text (source code) have a newline?
+            if not buf[-1][0].endswith('\n'): 
+                buf[-1] = (buf[-1][0] + piece[0], piece[1], piece[2], piece[3])
+                return buf
+            else: 
+                buf.append(piece)
+                return buf
+
+        self.input_buff = reduce(break_lines, self.input_buff, 
+                [('', False, None, 0)])[::-1]
         
         while self.input_buff:
             text,complete,fname,lineno = self.input_buff.pop()
@@ -318,6 +347,12 @@ class InputText:
                      c == self.delims[-1]:
                     self.delims.pop()
             prev_char = c
+
+        try:
+            ast.parse(text)
+        except SyntaxError, e:
+            if e.msg.find("unexpected EOF") != -1:
+                return False
             
         return (self.eos == '' and ends_without_bslash and                
                 len(self.delims) == 0)

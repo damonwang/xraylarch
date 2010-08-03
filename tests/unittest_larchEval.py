@@ -1,10 +1,13 @@
 #!/usr/bin/env python
 
 import unittest
-import larch
+import tempfile
 import code
 import ast
 import numpy
+import os
+
+import larch
 
 class TestLarchEval(unittest.TestCase):
     '''testing evaluation of larch code'''
@@ -20,11 +23,27 @@ class TestLarchEval(unittest.TestCase):
         '''assert that larch evaluates expr to False'''
 
         return self.assertFalse(self.li(expr))
+    
+    def eval(self, expr):
+        '''evaluates expr in a way that the interpreter sometimes can't, for
+        some reason. Appends a newline if necessary.
+        '''
+
+        if not expr.endswith('\n'):
+            expr += '\n'
+
+        return self.li.interp(ast.parse(expr))
 
     def setUp(self):
-        self.li = larch.Interpreter()
+        self.stdout = tempfile.NamedTemporaryFile(delete=False, prefix='larch')
+        self.li = larch.Interpreter(writer=self.stdout)
         self.n = lambda : self.li.symtable.n
-        self.eval = lambda expr: self.li.interp(ast.parse(expr))
+
+    def tearDown(self):
+        if not self.stdout.closed:
+            self.stdout.close()
+        os.unlink(self.stdout.name)
+
 
     def test_while(self):
         '''while loops'''
@@ -36,6 +55,27 @@ while n < 8:
 ''')
 
         self.assertTrue(self.li.symtable.n == 8)
+
+    def test_for(self):
+        '''for loops'''
+
+        self.eval('''
+n=0
+for i in arange(10):
+    n += i
+''')
+
+        self.assertTrue(self.li.symtable.n == 45)
+
+    def test_print(self):
+        '''print a string'''
+
+        self.eval("print 1")
+
+        self.stdout.close()
+        
+        with open(self.stdout.name) as inf:
+            self.assert_(inf.read() == '1\n')
 
     def test_cmp(self):
         '''numeric comparisons'''

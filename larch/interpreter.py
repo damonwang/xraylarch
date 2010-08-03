@@ -16,6 +16,7 @@ from . import builtins
 from .symboltable import SymbolTable, Group, isgroup
 from .util import LarchExceptionHolder, Procedure, DefinedVariable
 from .closure import Closure
+from .inputText import InputText
 
 __version__ = '0.9.3'
 
@@ -101,7 +102,7 @@ class Interpreter:
                        'print', 'raise', 'repr', 'return', 'slice', 'str',
                        'subscript', 'tryexcept', 'tuple', 'unaryop', 'while')
 
-    def __init__(self, symtable=None, writer=None):
+    def __init__(self, symtable=None, writer=None, **kwargs):
         self.writer = writer or sys.stdout
        
         if symtable is None:
@@ -115,6 +116,10 @@ class Interpreter:
         self.lineno    = -5
         builtingroup = getattr(symtable,'_builtin')
         mathgroup    = getattr(symtable,'_math')
+
+        options = dict(interactive=False)
+        options.update(kwargs)
+        self.input = InputText(interactive=options['interactive'])
 
         for sym in builtins.from_builtin:
             setattr(builtingroup, sym, __builtins__[sym])
@@ -174,16 +179,14 @@ class Interpreter:
                 (more input probably required)
         '''
 
-        try:
-            if self.push_buf != "":
-                self.push_buf += line
-            else: self.push_buf = line
-        except AttributeError, e:
-            self.push_buf = line
+        self.input.put(line)
 
         try:
-            parsed_code = ast.parse(self.push_buf)
-        except IndentationError, e:
+            block, filename, lineno = self.input.get()
+            if block is None:
+                raise IndexError
+            parsed_code = ast.parse(block)
+        except IndexError:
             return False
         except SyntaxError, e:
             if e.msg.find("unexpected EOF") != -1:
@@ -191,7 +194,6 @@ class Interpreter:
             else: raise e
 
         self.interp(parsed_code)
-        self.push_buf = ""
         return True
 
     def set_definedvariable(self, name, expr):
@@ -785,9 +787,8 @@ class Interpreter:
                     
                     ##thismod = symtable.new_modulegroup(name)
                     ##print("B ", thismod)
-                    text = open(modname).read()
                     inptext = inputText.InputText()
-                    inptext.put(text, filename=modname)
+                    inptext.readfile(modname)
 
                     while inptext:
                         block, fname, lineno = inptext.get()
