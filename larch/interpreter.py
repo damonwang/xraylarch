@@ -162,6 +162,7 @@ class Interpreter:
         with open(filename) as inf:
             for line in inf:
                 rv = self.push(line)
+                print('(%s) %s' % (rv, line))
 
         return rv # True if file was syntactically correct
 
@@ -194,7 +195,7 @@ class Interpreter:
             else: raise e
 
         self.interp(parsed_code)
-        return True
+        return self.error == []
 
     def set_definedvariable(self, name, expr):
         """define a defined variable (re-evaluate on access)"""

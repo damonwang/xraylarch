@@ -186,7 +186,6 @@ class InputText:
         
         indent_level = 0
         oneliner  = False
-        startkeys = self.block_friends.keys()
 
         def break_lines(buf, piece):
             '''Args:
@@ -233,7 +232,7 @@ class InputText:
 
             prefix,oneliner = '',False
 
-            if thiskey in startkeys:
+            if thiskey in self.block_friends:
                 # check for defined variables
                 if thiskey == 'def':
                     dname,dexpr = get_DefVar(text)
@@ -245,7 +244,7 @@ class InputText:
                     
                 # note that we **re-test** here,
                 # as thiskey may have changed above for defined variables
-                if thiskey in startkeys:
+                if thiskey in self.block_friends:
                     if text.find(':') < 1:
                         raise SyntaxError(
                             "%s statement needs a ':' at\n    %s" % (thiskey, text))
@@ -319,8 +318,8 @@ class InputText:
         """returns whether input text is a complete:
         that is: does not contains unclosed parens or quotes
         and does not end with a backslash
-        tores state information from previous textline in
-            self.eos    = char(s) to look for 'end of string' ("" == string complete)
+        stores state information from previous textline in
+            self.eos    = char(s) to look for 'end of string' ('' == string complete)
             self.delims = current list of closing delims being waited for
         """
         parens  = self.parens

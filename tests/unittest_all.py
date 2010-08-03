@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
-from __future__ import with_statement
+from __future__ import with_statement, print_function
 import os
 import sys
 import unittest
 import optparse
 import code
+import tempfile
 from contextlib import contextmanager
 from larch.symboltable import GroupAlias
 from unittest_larchEval import TestLarchEval, TestParse
@@ -89,6 +90,18 @@ class TestLarchImport(TestCase):
         self.assert_(hasattr(self.li.symtable, 'wb'))
         self.assert_(hasattr(self.li.symtable.wb, '__call__'))
 
+    def test_larch_import_error(self):
+        '''import larch module with error'''
+
+        larchcode = '''
+a =
+'''
+        with tempfile.NamedTemporaryFile(prefix='larch', delete=False) as outf:
+            print(larchcode, file=outf)
+            fname = outf.name
+
+        self.assert_(self.li.eval_file(fname))
+
 #------------------------------------------------------------------------------
 
 class TestLarchSource(TestCase):
@@ -124,6 +137,20 @@ class TestLarchSource(TestCase):
         self.li.push("a = ")
 
         self.assert_(not hasattr(li2, 'push_buf'))
+    
+    def test_push_no_indent(self):
+        '''non-Pythonic indentation'''
+
+        # FIXME can't handle non-Python indentation yet
+        larchcode = '''a = 0
+for i in arange(10):
+a += i
+#endfor'''.splitlines()
+
+        self.assert_(self.li.push(larchcode[0]))
+        self.assert_(not self.li.push(larchcode[1]))
+        self.assert_(not self.li.push(larchcode[2]))
+        self.assert_(self.li.push(larchcode[3]))
 
     def test_eval_file(self):
         '''eval a larch file'''
@@ -133,11 +160,11 @@ class TestLarchSource(TestCase):
 a = 0
 for i in arange(10):
     a += i
-endfor'''
+#endfor'''
 
         fname="testingtmp"
         with open(fname, "w") as outf:
-            print >> outf, larchcode
+            print(larchcode, file=outf)
 
         self.assert_(self.li.eval_file(fname))
         self.assert_(self.li.symtable.a == 45)
