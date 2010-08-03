@@ -8,51 +8,14 @@ import optparse
 import code
 from contextlib import contextmanager
 from larch.symboltable import GroupAlias
-from unittest_larchEval import TestLarchEval
+from unittest_larchEval import TestLarchEval, TestParse
 from unittest_SymbolTable import TestSymbolTable
+from unittest_util import *
 import larch
 
 #------------------------------------------------------------------------------
 
-@contextmanager
-def fake_call(original, replacement):
-        '''context manager that swaps out a function when called with the
-        given arguments. To be used for testing, not production.
-
-        Args:
-            original: function to replace
-            replacement: function that answers some (possibly improper) subset
-                of calls to original
-        '''
-
-        orig_mod = sys.modules[original.__module__]
-        orig_name = original.__name__
-
-        def dummy(*args, **kwargs):
-            '''intercepts calls to original and substitutes replacement'''
-            try: return replacement(*args, **kwargs)
-            except KeyError: return original(*args, **kwargs)
-    
-        setattr(orig_mod, orig_name, dummy)
-        yield
-        setattr(orig_mod, orig_name, original)
-
-#------------------------------------------------------------------------------
-
-class TestFakeCall(unittest.TestCase):
-
-    def test_fake_call(self):
-        '''fake_call context manager'''
-        PATH = os.getenv('PATH')
-        HOME = os.getenv('HOME')
-        with fake_call(os.getenv, dict(HOME='here').__getitem__):
-            self.assert_(os.getenv('HOME') == 'here')
-            self.assert_(os.getenv('HOME') != HOME)
-            self.assert_(os.getenv('PATH') == PATH)
-
-#------------------------------------------------------------------------------
-
-class TestGroupAlias(unittest.TestCase):
+class TestGroupAlias(TestCase):
 
     def test_create(self):
         '''construct a group from an object instance'''
@@ -66,22 +29,7 @@ class TestGroupAlias(unittest.TestCase):
 
 #------------------------------------------------------------------------------
 
-class TestLarchImport(unittest.TestCase):
-
-    def true(self, expr):
-        '''assert that larch evaluates expr to True'''
-
-        return self.assertTrue(self.li(expr))
-
-    def false(self, expr):
-        '''assert that larch evaluates expr to False'''
-
-        return self.assertFalse(self.li(expr))
-
-    def setUp(self):
-        '''creates a larch interpreter'''
-
-        self.li = larch.interpreter.Interpreter()
+class TestLarchImport(TestCase):
 
     def test_import(self):
         '''import entire python module'''
@@ -143,23 +91,8 @@ class TestLarchImport(unittest.TestCase):
 
 #------------------------------------------------------------------------------
 
-class TestLarchSource(unittest.TestCase):
+class TestLarchSource(TestCase):
     '''interpreter can source larch code from strings, files, etc.'''
-
-    def true(self, expr):
-        '''assert that larch evaluates expr to True'''
-
-        return self.assertTrue(self.li(expr))
-
-    def false(self, expr):
-        '''assert that larch evaluates expr to False'''
-
-        return self.assertFalse(self.li(expr))
-
-    def setUp(self):
-        '''creates a larch interpreter'''
-
-        self.li = larch.interpreter.Interpreter()
 
     def test_push_expr(self):
         '''push expression'''

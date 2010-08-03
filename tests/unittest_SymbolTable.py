@@ -2,12 +2,14 @@
 
 import unittest
 import larch
+from unittest_util import *
 
-class TestSymbolTable(unittest.TestCase):
+class TestSymbolTable(TestCase):
 
     default_search_groups = ['_sys', '_builtin', '_math']
 
     def setUp(self):
+        TestCase.setUp(self)
         self.s = larch.SymbolTable()
         self.g = self.s.create_group(name='g0', x=1, y=2)
         self.s.set_symbol(self.g.__name__, self.g)

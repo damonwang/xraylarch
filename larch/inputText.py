@@ -200,10 +200,8 @@ class InputText:
             # does last item's text (source code) have a newline?
             if not buf[-1][0].endswith('\n'): 
                 buf[-1] = (buf[-1][0] + piece[0], piece[1], piece[2], piece[3])
-                return buf
-            else: 
-                buf.append(piece)
-                return buf
+            else: buf.append(piece)
+            return buf
 
         self.input_buff = reduce(break_lines, self.input_buff, 
                 [('', False, None, 0)])[::-1]

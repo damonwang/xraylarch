@@ -1,49 +1,18 @@
 #!/usr/bin/env python
 
 import unittest
-import tempfile
 import code
 import ast
 import numpy
 import os
 
 import larch
+from unittest_util import *
 
-class TestLarchEval(unittest.TestCase):
+class TestLarchEval(TestCase):
     '''testing evaluation of larch code'''
 
     default_search_groups = ['_sys', '_builtin', '_math']
-
-    def true(self, expr):
-        '''assert that larch evaluates expr to True'''
-
-        return self.assertTrue(self.li(expr))
-
-    def false(self, expr):
-        '''assert that larch evaluates expr to False'''
-
-        return self.assertFalse(self.li(expr))
-    
-    def eval(self, expr):
-        '''evaluates expr in a way that the interpreter sometimes can't, for
-        some reason. Appends a newline if necessary.
-        '''
-
-        if not expr.endswith('\n'):
-            expr += '\n'
-
-        return self.li.interp(ast.parse(expr))
-
-    def setUp(self):
-        self.stdout = tempfile.NamedTemporaryFile(delete=False, prefix='larch')
-        self.li = larch.Interpreter(writer=self.stdout)
-        self.n = lambda : self.li.symtable.n
-
-    def tearDown(self):
-        if not self.stdout.closed:
-            self.stdout.close()
-        os.unlink(self.stdout.name)
-
 
     def test_while(self):
         '''while loops'''
@@ -165,11 +134,8 @@ a = arange(7)''')
 
         self.assertTrue(self.li.symtable.n == 2)
 
-class TestParse(unittest.TestCase):
+class TestParse(TestCase):
     '''testing parsing of larch code to ASTs'''
-
-    def setUp(self):
-        self.li = larch.Interpreter()
 
     def test_while(self):
         '''while loops'''
