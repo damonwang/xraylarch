@@ -119,7 +119,6 @@ class TestLarchImport(unittest.TestCase):
         self.li("import random")
 
         self.assert_(hasattr(self.li.symtable, 'random'))
-        print(dir(self.li.symtable.random))
         self.assert_(hasattr(self.li.symtable.random, 'weibull'))
         # make sure we didn't take the Python random module
         self.assert_(not hasattr(self.li.symtable.random, 'gauss'))
