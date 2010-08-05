@@ -80,6 +80,25 @@ def find_larchrcs():
                 return larchrc 
     return None
 
+def search_dirs(filename, dirs, only_first=True):
+    '''search_dirs(filename, dirs[, only_first=True]) -> list or string
+
+    return full paths to files with `filename` in any of the directories listed
+    in `dirs`. If no matching files are found, returns `[]`.
+    
+    If `only_first` is given, return only the first file found or `None` if no
+    files were found.
+    '''
+
+    rv = [ os.path.join(dirname, filename) for dirname in dirs
+            if os.path.exists(dirname) and filename in os.listdir(dirname) ]
+
+    if only_first:
+        try: return rv[0]
+        except IndexError:
+            return None
+    else: return rv
+
 #------------------------------------------------------------------------------
 class Interpreter:
     """larch program compiler and interpreter.
@@ -779,26 +798,17 @@ class Interpreter:
         if (do_reload or
             (name not in st_sys.modules and name not in sys.modules)):
             # first look for "name.lar"
-            islarch = False
-            larchname = "%s.lar" % name
-            # FIXME If the named module exists in multiple places in the path,
-            # I think this will import all the copies and not just the earliest
-            for dirname in [ p for p in st_sys.path if os.path.exists(p) ]:
-                if larchname in os.listdir(dirname):
-                    islarch = True
-                    modname = os.path.abspath(os.path.join(dirname, larchname))
-                    # print(" isLarch!!", name, modname)
-                    # save current module group
-                    #  create new group, set as moduleGroup and localGroup
-                    st_sys.modules[name] = thismod = Group(name=name)
-                    with self.symtable.in_frame(thismod, thismod):
-                        self.eval_file(modname)
-            if len(self.error) > 0:
-                st_sys.modules.pop(name)
-                # thismod = None
-                return
+            modname = search_dirs("%s.lar" % name, st_sys.path)
+            if modname is not None:
+                st_sys.modules[name] = thismod = Group(name=name)
+                with self.symtable.in_frame(thismod, thismod):
+                    self.eval_file(modname)
+                if len(self.error) > 0:
+                    st_sys.modules.pop(name)
+                    # thismod = None
+                    return
             # or, if not a larch module, load as a regular python module
-            if not islarch:
+            else:
                 try:
                     __import__(name)
                     thismod = sys.modules[name]

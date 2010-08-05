@@ -8,7 +8,9 @@ import optparse
 import code
 import tempfile
 import pdb
+import shutil
 from contextlib import contextmanager
+from larch.interpreter import search_dirs
 from larch.symboltable import GroupAlias
 from unittest_larchEval import TestLarchEval, TestParse
 from unittest_SymbolTable import TestSymbolTable
@@ -103,6 +105,18 @@ a =
 
         self.assert_(self.li.eval_file(fname))
 
+    def test_larch_import_first_only(self):
+        '''import only first matching larch module'''
+
+        fakedir = tempfile.mkdtemp()
+        self.li.symtable._sys.path.append(fakedir)
+        with open(os.path.join(fakedir, "l_random.lar"), "a") as outf:
+            print("from os import path", file=outf)
+        
+        self.li('import l_random')
+
+        self.assert_(not hasattr(self.li.symtable.l_random, 'path'))
+
 #------------------------------------------------------------------------------
 
 class TestLarchSource(TestCase):
@@ -172,6 +186,87 @@ for i in arange(10):
         self.assert_(self.li.symtable.a == 45)
 
         os.unlink(fname)
+
+#------------------------------------------------------------------------------
+
+class TestSearchDirs(TestCase):
+    def setUp(self):
+        TestCase.setUp(self)
+
+        self.dirname = tempfile.mkdtemp()
+        self.haystack_name = "haystack"
+        self.haystack = os.path.join(self.dirname, self.haystack_name)
+        self.needle_name = "needle"
+        self.needle = os.path.join(self.haystack, self.needle_name)
+
+        self.PATH = [ os.path.join(self.dirname, str(subdir))
+                for subdir in sum([[self.haystack_name], range(10)], []) ]
+        map(os.mkdir, self.PATH)
+
+        with open(self.needle, "w") as outf:
+            print("You found me!", file=outf)
+
+    def tearDown(self):
+        shutil.rmtree(self.dirname)
+
+    @property
+    def first(self):
+
+        return search_dirs(self.needle_name, self.PATH, only_first=True)
+
+    @property
+    def results(self):
+
+        return search_dirs(self.needle_name, self.PATH, only_first=False)
+
+    def test_one_existing(self):
+        '''find one existing file'''
+
+        self.assertListEqual(self.results, [self.needle])
+
+    def test_multiple_existing(self):
+        '''find all existing files'''
+
+        other = os.path.join(self.PATH[5], self.needle_name)
+        with open(other, "w") as outf:
+            print("Found another!", file=outf)
+
+        self.assertListEqual(self.results, [self.needle, other])
+
+    def test_PATH_broken(self):
+        '''skip nonexisting PATH elements'''
+
+        os.rmdir(self.PATH[5])
+
+        self.assertListEqual(self.results, [self.needle])
+
+    def test_no_needle(self):
+        '''return [] if no file exists'''
+
+        os.unlink(self.needle)
+
+        self.assert_(self.results == [])
+
+    def test_one_existing_return_one(self):
+        '''find first of one existing file'''
+
+        self.assert_(self.first == self.needle)
+
+    def test_multiple_existing_return_one(self):
+        '''find first of all existing file'''
+
+        other = os.path.join(self.PATH[0], self.needle_name)
+        with open(other, "w") as outf:
+            print("Found another!", file=outf)
+        
+        self.assert_(self.first == self.needle)
+
+    def test_no_needle(self):
+        '''return [] if no file exists'''
+
+        os.unlink(self.needle)
+
+        self.assert_(self.first is None)
 
 #------------------------------------------------------------------------------
 

@@ -47,6 +47,13 @@ class TestCase(unittest.TestCase):
 
         return self.assertFalse(self.li(expr))
 
+    def assertListEqual(self, A, B):
+        '''A and B have the same items in the same order'''
+
+        self.assert_(len(A) == len(B))
+        for a, b in zip(A, B):
+            self.assert_(a == b)
+
     def setUp(self):
         self.stdout = tempfile.NamedTemporaryFile(delete=False, prefix='larch')
         self.li = larch.Interpreter(writer=self.stdout)

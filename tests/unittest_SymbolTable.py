@@ -52,8 +52,7 @@ class TestSymbolTable(TestCase):
 
         # do this separately because == on lists is undefined
         self.s.set_symbol('_main.list_', value=[1, 2, 3])
-        for a, b in zip([1, 2, 3], self.s.list_):
-            self.assertTrue(a == b)
+        self.assertListEqual([1, 2, 3], self.s.list_)
 
 if __name__ == '__main__':
     suite = unittest.TestLoader().loadTestsFromTestCase(TestSymbolTable)
