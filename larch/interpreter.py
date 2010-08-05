@@ -787,9 +787,8 @@ class Interpreter:
         # print("IMPORT MOD ", name, asname, fromlist)
         symtable = self.symtable
         st_sys     = symtable._sys
-        for idir in st_sys.path:
-            if idir not in sys.path and os.path.exists(idir):
-                sys.path.append(idir)
+        sys.path.extend([ p for p in st_sys.path 
+            if p not in sys.path and os.path.exists(p) ])
 
         # step 1  import the module to a global location
         #   either sys.modules for python modules
@@ -798,11 +797,11 @@ class Interpreter:
         if (do_reload or
             (name not in st_sys.modules and name not in sys.modules)):
             # first look for "name.lar"
-            modname = search_dirs("%s.lar" % name, st_sys.path)
-            if modname is not None:
+            filename = search_dirs("%s.lar" % name, st_sys.path)
+            if filename is not None:
                 st_sys.modules[name] = thismod = Group(name=name)
                 with self.symtable.in_frame(thismod, thismod):
-                    self.eval_file(modname)
+                    self.eval_file(filename)
                 if len(self.error) > 0:
                     st_sys.modules.pop(name)
                     # thismod = None
@@ -826,8 +825,7 @@ class Interpreter:
         # import full module
         # print("IM: from ", fromlist, asname)
         if fromlist is None:
-            if asname is None:
-                asname = name
+            asname = asname or name
             parts = asname.split('.')
             asname = parts.pop()
             targetgroup = st_sys.moduleGroup

@@ -416,26 +416,20 @@ class SymbolTable(Group):
         grp = self._fix_searchGroups()['localGroup']
         if group is not None:
             grp = self.get_group(group)
-        names = name.split('.')
-        child = names.pop()
-        for nam in names:
-            if hasattr(grp, nam):
-                grp = getattr(grp, nam)
-                if not isgroup(grp):
-                    raise ValueError(
-                "cannot create subgroup of non-group '%s'" % grp)
-            else:
-                setattr(grp, nam, Group())
+
         if HAS_NUMPY and isinstance(value, list):
-            try:
-                v1 = numpy.array(value)
-                value = v1
-            except:
-                pass
+            try: value=numpy.array(value)
+            except: pass
 
-        setattr(grp, child, value)
-        return getattr(grp, child)        
-
+        def setter(grp, name, *args):
+            if args:
+                if not hasattr(grp, name):    
+                    setattr(grp, name, Group(name=name))
+                return setter(getattr(grp, name), *args)
+            else:
+                setattr(grp, name, value)
+                return getattr(grp, name)
+        return setter(grp, *name.split('.')) 
    
     def del_symbol(self, name):
         "delete a symbol"

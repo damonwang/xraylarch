@@ -2,7 +2,10 @@
 
 import unittest
 import larch
+import code
+import numpy
 from unittest_util import *
+from larch.symboltable import isgroup, Group
 
 class TestSymbolTable(TestCase):
 
@@ -50,9 +53,37 @@ class TestSymbolTable(TestCase):
             self.s.set_symbol('_main.%s' % k, value=v)
             self.assertTrue(self.s.get_symbol('_main.%s' % k) == v)
 
-        # do this separately because == on lists is undefined
+        # do this separately because list == array is undefined
         self.s.set_symbol('_main.list_', value=[1, 2, 3])
         self.assertListEqual([1, 2, 3], self.s.list_)
+
+    def test_set_nested_symbol(self):
+        '''set nested symbol in table'''
+
+        self.s.set_symbol('_main.foo.bar.baz', value=1)
+        self.assert_(hasattr(self.s._main, 'foo'))
+        self.assert_(isgroup(getattr(self.s._main, 'foo')))
+        self.assert_(hasattr(self.s._main.foo, 'bar'))
+        self.assert_(isgroup(getattr(self.s._main.foo, 'bar')))
+        self.assert_(hasattr(self.s._main.foo.bar, 'baz'))
+        self.assert_(self.s._main.foo.bar.baz == 1)
+
+    def test_set_symbol_as_array(self):
+        '''convert to array and set symbol'''
+
+        self.s.set_symbol('_main.foo', range(10))
+        self.assert_(isinstance(self.s._main.foo, numpy.ndarray))
+        self.assertListEqual(self.s._main.foo, range(10))
+
+    def test_set_symbol_in_group(self):
+        '''set symbol into group'''
+
+        self.s.set_symbol('g', Group(name='g'))
+        self.s.set_symbol('foo', 1, group='g')
+        self.assert_(hasattr(self.s.get_symbol('g'), 'foo'))
+        self.assert_(self.s.get_symbol('g').foo == 1)
+
+        
 
 if __name__ == '__main__':
     suite = unittest.TestLoader().loadTestsFromTestCase(TestSymbolTable)
