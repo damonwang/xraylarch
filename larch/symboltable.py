@@ -5,6 +5,7 @@ from __future__ import print_function
 import os
 import sys
 import types
+from contextlib import contextmanager
 from .closure import Closure
 from . import site_config
 try:
@@ -482,6 +483,12 @@ class SymbolTable(Group):
                     val = Closure(func=val, **kw)
                 self.set_symbol("%s.%s" % (groupname, key), val)
         
+    @contextmanager
+    def in_frame(self, localGroup, globalGroup):
+        self.save_frame()
+        self.set_frame((localGroup, globalGroup))
+        yield
+        self.restore_frame()
             
 # if __name__ == '__main__':
 #     symtab = SymbolTable()

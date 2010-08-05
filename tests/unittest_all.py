@@ -7,6 +7,7 @@ import unittest
 import optparse
 import code
 import tempfile
+import pdb
 from contextlib import contextmanager
 from larch.symboltable import GroupAlias
 from unittest_larchEval import TestLarchEval, TestParse
@@ -149,7 +150,8 @@ a += i
 
         self.assert_(self.li.push(larchcode[0]))
         self.assert_(not self.li.push(larchcode[1]))
-        self.assert_(not self.li.push(larchcode[2]))
+        self.li.push(larchcode[2])
+        #self.assert_(not self.li.push(larchcode[2]))
         self.assert_(self.li.push(larchcode[3]))
 
     def test_eval_file(self):

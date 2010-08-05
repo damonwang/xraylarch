@@ -56,6 +56,8 @@ if sys.version_info[0] == 2:
     def iscallable(obj):
         return callable(obj) or hasattr(obj, '__call__')
 
+#------------------------------------------------------------------------------
+
 # TODO test
 def find_larchrcs():
     '''finds the user larchrc files. Tries in this order:
@@ -78,6 +80,7 @@ def find_larchrcs():
                 return larchrc 
     return None
 
+#------------------------------------------------------------------------------
 class Interpreter:
     """larch program compiler and interpreter.
   This module compiles expressions and statements to AST representation,
@@ -162,7 +165,10 @@ class Interpreter:
         with open(filename) as inf:
             for line in inf:
                 rv = self.push(line)
-                print('(%s) %s' % (rv, line))
+                #print('(%s) %s' % (rv, line))
+                if self.error != []:
+                    print(self.error[-1].get_error())
+                    break
 
         return rv # True if file was syntactically correct
 
@@ -775,6 +781,8 @@ class Interpreter:
             # first look for "name.lar"
             islarch = False
             larchname = "%s.lar" % name
+            # FIXME If the named module exists in multiple places in the path,
+            # I think this will import all the copies and not just the earliest
             for dirname in [ p for p in st_sys.path if os.path.exists(p) ]:
                 if larchname in os.listdir(dirname):
                     islarch = True
@@ -782,22 +790,9 @@ class Interpreter:
                     # print(" isLarch!!", name, modname)
                     # save current module group
                     #  create new group, set as moduleGroup and localGroup
-                    symtable.save_frame()
                     st_sys.modules[name] = thismod = Group(name=name)
-                    symtable.set_frame((thismod, thismod))
-                    
-                    ##thismod = symtable.new_modulegroup(name)
-                    ##print("B ", thismod)
-                    inptext = inputText.InputText()
-                    inptext.readfile(modname)
-
-                    while inptext:
-                        block, fname, lineno = inptext.get()
-                        self.eval(block, fname=fname, lineno=lineno)
-                        if self.error:
-                            print(self.error)
-                            break
-                    symtable.restore_frame()
+                    with self.symtable.in_frame(thismod, thismod):
+                        self.eval_file(modname)
             if len(self.error) > 0:
                 st_sys.modules.pop(name)
                 # thismod = None
