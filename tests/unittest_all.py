@@ -38,34 +38,43 @@ class TestLarchImport(TestCase):
     def test_import(self):
         '''import entire python module'''
 
-        self.li("import unittest")
+        self.li("import csv")
 
-        self.assert_(hasattr(self.li.symtable, 'unittest'))
-        self.assert_(hasattr(self.li.symtable.unittest, 'TestCase'))
+        self.assert_(hasattr(self.li.symtable, 'csv'))
+        self.assert_(hasattr(self.li.symtable.csv, 'reader'))
+
+    def test_import_error(self):
+        '''import python module with error'''
+
+        self.li("import sdflksj")
+
+        self.assert_(self.li.error and 
+                [e.expr for e in self.li.error 
+                    if isinstance(e.py_exc[1], ImportError)])
 
     def test_import_as(self):
         '''import entire python module as other name'''
 
-        self.li("import unittest as test")
+        self.li("import csv as foo")
 
-        self.assert_(hasattr(self.li.symtable, 'test'))
-        self.assert_(hasattr(self.li.symtable.test, 'TestCase'))
+        self.assert_(hasattr(self.li.symtable, 'foo'))
+        self.assert_(hasattr(self.li.symtable.foo, 'reader'))
 
     def test_from_import(self):
         '''import python submodule'''
 
-        self.li("from unittest import TestCase")
+        self.li("from csv import reader")
 
-        self.assert_(hasattr(self.li.symtable, 'TestCase'))
-        self.assert_(hasattr(self.li.symtable.TestCase, 'assert_'))
+        self.assert_(hasattr(self.li.symtable, 'reader'))
+        self.assert_(hasattr(self.li.symtable.reader, '__call__'))
 
     def test_from_import_as(self):
         '''import python submodule as other name'''
 
-        self.li("from unittest import TestCase as tc")
+        self.li("from csv import reader as r")
 
-        self.assert_(hasattr(self.li.symtable, 'tc'))
-        self.assert_(hasattr(self.li.symtable.tc, 'assert_'))
+        self.assert_(hasattr(self.li.symtable, 'r'))
+        self.assert_(hasattr(self.li.symtable.r, '__call__'))
 
     def test_larch_import(self):
         '''import entire larch module'''

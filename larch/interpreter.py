@@ -4,7 +4,7 @@ from __future__ import division, print_function, with_statement
 import os
 import sys
 import ast
-from code import interact
+from itertools import izip_longest, chain
 try:
     import numpy
     HAS_NUMPY = True
@@ -785,8 +785,7 @@ class Interpreter:
         or from-import, use of asname) and so is fairly long.
         """
         # print("IMPORT MOD ", name, asname, fromlist)
-        symtable = self.symtable
-        st_sys     = symtable._sys
+        st_sys     = self.symtable._sys
         sys.path.extend([ p for p in st_sys.path 
             if p not in sys.path and os.path.exists(p) ])
 
@@ -794,8 +793,7 @@ class Interpreter:
         #   either sys.modules for python modules
         #   or  st_sys.modules for larch modules
         # reload takes effect here in the normal python way:
-        if (do_reload or
-            (name not in st_sys.modules and name not in sys.modules)):
+        if do_reload or name not in chain(st_sys.modules, sys.modules):
             # first look for "name.lar"
             filename = search_dirs("%s.lar" % name, st_sys.path)
             if filename is not None:
@@ -804,47 +802,29 @@ class Interpreter:
                     self.eval_file(filename)
                 if len(self.error) > 0:
                     st_sys.modules.pop(name)
-                    # thismod = None
                     return
-            # or, if not a larch module, load as a regular python module
-            else:
-                try:
-                    __import__(name)
-                    thismod = sys.modules[name]
+            else: # or, if not a larch module, load as a regular python module
+                try: thismod = __import__(name)
                 except:
                     self.raise_exception(None, msg='Import Error',
                                          py_exc=sys.exc_info())
                     return
-        else: # previously loaded module, just do lookup
-            if name in st_sys.modules:
-                thismod = st_sys.modules[name]
-            elif name in sys.modules:
-                thismod = sys.modules[name]               
+        # previously loaded module, just do lookup
+        else: thismod = st_sys.modules.get(name) or sys.modules.get(name)
                
         # now we install thismodule into the current moduleGroup
-        # import full module
-        # print("IM: from ", fromlist, asname)
-        if fromlist is None:
-            asname = asname or name
-            parts = asname.split('.')
-            asname = parts.pop()
+        if fromlist is None: # import full module
+            setattr(st_sys.moduleGroup, asname or name, thismod)
+        else: # import-from construct
+            if len(fromlist) < len(asname): # FIXME ugly
+                try: 
+                    raise ImportError("cannot import name %s" % alias)
+                except: 
+                    self.raise_exception(None, msg='Import Error',
+                            py_exc=sys.exc_info())
             targetgroup = st_sys.moduleGroup
-            while len(parts) > 0:
-                subname = parts.pop(0)
-                subgrp  = Group()
-                setattr(targetgroup, subname, subgrp)
-                targetgroup = subgrp
-            setattr(targetgroup, asname, thismod)
-        # import-from construct
-        else:
-            
-            if asname is None:
-                asname = [None]*len(fromlist)
-            targetgroup = st_sys.moduleGroup
-            for sym, alias in zip(fromlist, asname):
-                if alias is None:
-                    alias = sym
-                setattr(targetgroup, alias, getattr(thismod, sym))
+            for sym, alias in izip_longest(fromlist, asname):
+                setattr(targetgroup, alias or sym, getattr(thismod, sym))
         # print("DONE")
     # end of import_module
 
