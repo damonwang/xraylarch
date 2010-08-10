@@ -6,7 +6,7 @@ import os
 import sys
 import types
 from contextlib import contextmanager
-from .closure import Closure
+from .closure import closure
 from . import site_config
 try:
     import numpy
@@ -474,7 +474,7 @@ class SymbolTable(Group):
 
             for key, val in syms.items():
                 if callable(val):
-                    val = Closure(func=val, **kw)
+                    val = closure(val, **kw)
                 self.set_symbol("%s.%s" % (groupname, key), val)
         
     @contextmanager
