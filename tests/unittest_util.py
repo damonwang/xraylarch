@@ -13,26 +13,50 @@ import larch
 
 @contextmanager
 def fake_call(original, replacement):
-        '''context manager that swaps out a function when called with the
-        given arguments. To be used for testing, not production.
+    '''context manager that swaps out a function when called with the
+    given arguments. To be used for testing, not production.
 
-        Args:
-            original: function to replace
-            replacement: function that answers some (possibly improper) subset
-                of calls to original
-        '''
+    Args:
+        original: function to replace
+        replacement: function that answers some (possibly improper) subset
+            of calls to original
+    '''
 
-        orig_mod = sys.modules[original.__module__]
-        orig_name = original.__name__
+    orig_mod = sys.modules[original.__module__]
+    orig_name = original.__name__
 
-        def dummy(*args, **kwargs):
-            '''intercepts calls to original and substitutes replacement'''
-            try: return replacement(*args, **kwargs)
-            except KeyError: return original(*args, **kwargs)
-    
-        setattr(orig_mod, orig_name, dummy)
+    def dummy(*args, **kwargs):
+        '''intercepts calls to original and substitutes replacement'''
+        try: return replacement(*args, **kwargs)
+        except KeyError: return original(*args, **kwargs)
+
+    setattr(orig_mod, orig_name, dummy)
+    yield
+    setattr(orig_mod, orig_name, original)
+
+@contextmanager
+def temp_set(*args):
+    '''temp_set(setter, temporary, original) -> context management
+    calls setter(temporary) before and setter(original) after
+
+    temp_set((obj, attrname), temporary)
+    setattr(obj, attrname, temporary) before and restores original value after
+    '''
+
+    if len(args) == 3:
+        setter, temporary, original = args
+        setter(temporary)
         yield
-        setattr(orig_mod, orig_name, original)
+        setter(original)
+    elif len(args) == 2:
+        obj, attrname = args[0]
+        temporary = args[1]
+        original = getattr(obj, attrname)
+
+        setattr(obj, attrname, temporary)
+        yield
+        setattr(obj, attrname, original)
+    else: raise ValueError("given %s\n\n%s" % (args, temp_set.__doc__))
 
 #------------------------------------------------------------------------------
 
@@ -53,6 +77,14 @@ class TestCase(unittest.TestCase):
         self.assert_(len(A) == len(B))
         for a, b in zip(A, B):
             self.assert_(a == b)
+    
+    def assertNotRaises(self, excClass, *args, **kwargs):
+        '''fails if an error is raised'''
+
+        try: self.assertRaises(excClass, *args, **kwargs)
+        except self.failureException, e:
+            pass
+        else: raise self.failureException("%s raised" % excClass.__name__)
 
     def setUp(self):
         self.stdout = tempfile.NamedTemporaryFile(delete=False, prefix='larch')
@@ -77,7 +109,7 @@ class TestCase(unittest.TestCase):
 
 #------------------------------------------------------------------------------
 
-class TestFakeCall(TestCase):
+class TestUtils(TestCase):
 
     def test_fake_call(self):
         '''fake_call context manager'''
@@ -87,5 +119,34 @@ class TestFakeCall(TestCase):
             self.assert_(os.getenv('HOME') == 'here')
             self.assert_(os.getenv('HOME') != HOME)
             self.assert_(os.getenv('PATH') == PATH)
+
+    def test_temp_set_setter(self):
+        '''temporarily set using setter'''
+
+        d = dict(a=1)
+        with temp_set(d.update, dict(a=2), dict(a=1)):
+            self.assert_(d['a'] == 2)
+        self.assert_(d['a'] == 1)
+
+    def test_temp_set_setattr(self):
+        '''temporarily set using setattr'''
+
+        self.a = 1
+        with temp_set((self, 'a'), 2):
+            self.assert_(self.a == 2)
+        self.assert_(self.a == 1)
+
+    def test_assertNotRaises(self):
+        '''assertNotRaises works'''
+
+        def f(fail, arg_len, kwarg_len, *args, **kwargs):
+            self.assert_(len(args) == arg_len)
+            self.assert_(len(kwargs) == kwarg_len)
+            if fail:
+                raise IndexError
+
+        self.assertNotRaises(IndexError, f, False, 3, 1, 1, 2, 3, a=5)
+        self.assertRaises(self.failureException, self.assertNotRaises,
+                IndexError, f, True, 0, 0)
 
 #------------------------------------------------------------------------------

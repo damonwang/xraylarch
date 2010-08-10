@@ -26,10 +26,30 @@ class TestGroupAlias(TestCase):
 
         # get a useful backtrace
         # must restore recursion limit or later tests will be VERY odd
-        rec_lim = sys.getrecursionlimit()
-        sys.setrecursionlimit(35)
-        ga = GroupAlias({})
-        sys.setrecursionlimit(rec_lim)
+        with temp_set(sys.setrecursionlimit, 35, sys.getrecursionlimit()):
+            ga = GroupAlias({})
+
+#------------------------------------------------------------------------------
+
+class TestLarchEnvErr(TestCase):
+    def run_in_context(self):
+        '''imports larch in context'''
+
+        with open(larch.__file__.replace(".pyc", ".py")) as inf:
+            exec inf in globals()
+
+    def test_version_check(self):
+        '''checks python version'''
+
+        with temp_set((sys, 'version_info'), (2, 5)):
+            self.assertRaises(EnvironmentError, self.run_in_context)
+        with temp_set((sys, 'version_info'), (1, 5)):
+            self.assertRaises(EnvironmentError, self.run_in_context)
+        with temp_set((sys, 'version_info'), (2, 6)):
+            # ValueError comes from trying relative syntax like
+            #     from .closure import Closure 
+            # outside a package. If it gets that far, the version check passed
+            self.assertRaises(ValueError, self.run_in_context)
 
 #------------------------------------------------------------------------------
 
