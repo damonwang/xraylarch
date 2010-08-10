@@ -60,6 +60,22 @@ def temp_set(*args):
 
 #------------------------------------------------------------------------------
 
+def call_logger(log):
+    '''returns a function that writes its calls into log. e.g., 
+        >>> log = []
+        >>> f = call_logger(log)
+        >>> f(1)
+        >>> f(1, 2, 3, foo='bar')
+        >>> log
+        [((1,),{}), ((1, 2, 3), {'foo': 'bar'})]
+
+    log can be anything with an `append` method.
+    '''
+
+    return lambda *args, **kwargs: log.append((args, kwargs))
+
+#------------------------------------------------------------------------------
+
 class TestCase(unittest.TestCase):
     def true(self, expr):
         '''assert that larch evaluates expr to True'''
@@ -90,6 +106,7 @@ class TestCase(unittest.TestCase):
         self.stdout = tempfile.NamedTemporaryFile(delete=False, prefix='larch')
         self.li = larch.Interpreter(writer=self.stdout)
         self.n = lambda : self.li.symtable.n
+        self.s = self.li.symtable
 
     def tearDown(self):
         if not self.stdout.closed:
@@ -148,5 +165,12 @@ class TestUtils(TestCase):
         self.assertNotRaises(IndexError, f, False, 3, 1, 1, 2, 3, a=5)
         self.assertRaises(self.failureException, self.assertNotRaises,
                 IndexError, f, True, 0, 0)
+
+    def test_call_logger(self):
+        a = []
+        f = call_logger(a)
+        f(1)
+        f(1, 2, 3, foo='bar')
+        self.assertListEqual(a, [((1,),{}), ((1, 2, 3), dict(foo='bar'))])
 
 #------------------------------------------------------------------------------

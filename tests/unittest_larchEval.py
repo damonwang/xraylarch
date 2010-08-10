@@ -5,8 +5,10 @@ import code
 import ast
 import numpy
 import os
+import pdb
 
 import larch
+from larch.symboltable import isgroup
 from unittest_util import *
 
 class TestLarchEval(TestCase):
@@ -145,6 +147,69 @@ class TestParse(TestCase):
         self.assertTrue(ast.dump(ast.parse(larchcode)) == 
                 ast.dump(self.li.compile(larchcode)))
 
+class TestBuiltins(TestCase):
+
+    # These probably aren't unit tests any more, but going through the eval
+    # was the easier way to test these functions, even if we are now relying
+    # on the interpretation layer to call the builtins correctly.
+
+    def test_group(self):
+        '''group builtin'''
+
+        self.eval('g = group()')
+        self.assert_(isgroup(self.li.symtable.g))
+
+    def test_showgroup(self):
+        '''showgroup builtin'''
+
+        self.eval('g = group()')
+        self.assert_(self.eval('showgroup(g)') == self.li.symtable.show_group(self.li.symtable.g))
+
+    def test_showgroup_defarg(self):
+        '''showgroup builtin default argument'''
+
+        self.eval('g = group()')
+        self.assert_(self.eval('showgroup()') == self.s.show_group(self.s._main))
+
+    def test_run(self):
+        '''run builtin'''
+
+        self.eval(r'run("larch/modules/l_random.lar")')
+        #pdb.set_trace()
+        self.assert_(hasattr(self.li.symtable, 'laplace'))
+
+    def test_run_nonexistent(self):
+        '''run builting with nonexistent file'''
+
+        self.eval(r'run("nonexistent_lasdfjsdl")')
+        self.assert_("No such file" in self.li.error[0].get_error()[1])
+
+    def test_which(self):
+        '''which builtin'''
+
+        self.eval('g = group()')
+        self.eval('which("g")')
+        self.stdout.close()
+        with open(self.stdout.name) as outf:
+            self.assert_(str(self.s.get_parent('g')) in outf.read())
+
+    def test_reload_larch(self):
+        '''reload builtin, larch'''
+
+        self.eval('import l_random')
+        delattr(self.s.l_random, 'bytes')
+        self.assert_(not hasattr(self.s.l_random, 'bytes'))
+        self.eval('reload(l_random)')
+        self.assert_(hasattr(self.s.l_random, 'bytes'))
+
+    def test_reload_larch(self):
+        '''reload builtin, python'''
+
+        self.eval('import csv')
+        setattr(self.s.csv, 'reader', self)
+        self.assert_(self.s.csv.reader == self)
+        self.eval('reload(csv)')
+        self.assert_(not self.s.csv.reader == self)
 
 if __name__ == '__main__':
     for suite in (TestParse, TestLarchEval):

@@ -1,4 +1,6 @@
+#!/usr/bin/env python
 
+from __future__ import print_function
 import os
 import sys
 import copy
@@ -90,39 +92,24 @@ def _showgroup(gname=None,larch=None):
         gname = '_main'
     return larch.symtable.show_group(gname)
 
-def _copy(obj,**kw):
+def _copy(obj,**kw): # pragma: no cover
     return copy.deepcopy(obj)
 
 def _run(name, larch=None, **kw):
     "run a larch file"
     if larch is None:
         raise Warning("cannot run file '%s' -- larch broken?" % name)
-        
-    try:
-        inpf = open(name, 'r')
-    except:
-        raise Warning("cannot run file '%s' -- file not found" % name)        
 
-
-    larch.inptext.interactive = False
-    for itxt, txt in enumerate(inpf.readlines()):
-        larch.inptext.put(txt[:-1], lineno=itxt,  filename=name)
-    larch.execute('')
-    larch.inptext.interactive = True
-    inpf.close()
-
+    larch.eval_file(name)
 
 def _which(name, larch=None, **kw):
     "print out fully resolved name of a symbol"
     if larch is None:
         raise Warning("cannot locate symobol '%s' -- larch broken?" % name)
 
-    print("Find symbol %s" % name)
-    print( larch.symbtable.get_parent(name))
+    print("Find symbol %s" % name, file=larch.writer)
+    print(larch.symtable.get_parent(name), file=larch.writer)
     
-    
-
-
 
 def _reload(mod,larch=None,**kw):
     """reload a module, either larch or python"""
@@ -206,7 +193,7 @@ def _more(name,pagelength=24,**kws):
         l = f.readlines()
 
     except IOError:
-        print "cannot open file: %s." % name
+        print("cannot open file: %s." % name)
         return
     finally:
         f.close()

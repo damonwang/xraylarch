@@ -12,7 +12,7 @@ import shutil
 from contextlib import contextmanager
 from larch.interpreter import search_dirs
 from larch.symboltable import GroupAlias
-from unittest_larchEval import TestLarchEval, TestParse
+from unittest_larchEval import TestLarchEval, TestParse, TestBuiltins
 from unittest_SymbolTable import TestSymbolTable
 from unittest_util import *
 import larch

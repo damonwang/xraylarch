@@ -55,7 +55,7 @@ class shell(cmd.Cmd):
                 sys.stdout.write("%s\n" % userbanner)
             
         
-        self.larch  = Interpreter()
+        self.larch  = Interpreter(writer=self.stdout)
         self.input  = InputText(prompt=self.ps1)
         self.prompt = self.ps1
         
