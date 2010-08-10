@@ -130,6 +130,7 @@ class Interpreter:
         if symtable is None:
             symtable = SymbolTable(larch=self)
         self.symtable   = symtable
+
         self._interrupt = None
         self.error      = [] 
         self.expr       = None
@@ -155,9 +156,8 @@ class Interpreter:
 
         for fname, fcn in list(builtins.local_funcs.items()):
             setattr(builtingroup, fname,
-                    Closure(func=fcn, larch=self))
-        setattr(builtingroup, 'definevar',
-                Closure(func=self.set_definedvariable))
+                    lambda *args, **kwargs: func(larch=self, *args, **kwargs))
+        setattr(builtingroup, 'definevar', self.set_definedvariable)
         
         self.node_handlers = {}
         for tnode in self.supported_nodes:
@@ -827,4 +827,9 @@ class Interpreter:
                 setattr(targetgroup, alias or sym, getattr(thismod, sym))
         # print("DONE")
     # end of import_module
+
+    def getAutoCompleteKeys(self):
+        '''Return list of auto-completion keycodes.'''
+
+        return map(ord, ['.'])
 

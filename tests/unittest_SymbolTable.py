@@ -7,6 +7,73 @@ import numpy
 from unittest_util import *
 from larch.symboltable import isgroup, Group
 
+class TestGroup(TestCase):
+
+    def setUp(self):
+        TestCase.setUp(self)
+        self.g = Group()
+        self.d = dict([ (chr(y + ord('a')), x)
+            for x, y in enumerate(range(10))])
+
+    def test_init(self):
+        '''init group'''
+
+        g = Group(name='foo', bar='baz')
+        self.assert_(g.__name__ == 'foo')
+        self.assert_(hasattr(g, bar))
+        self.assert_(g.bar == 'baz')
+
+    def test_len(self):
+        '''group len is number of members'''
+
+        g = Group(**self.d)
+        self.assert_(len(g) == 10)
+        g = Group()
+        self.assert_(len(g) == 0)
+
+    def test_setattr(self):
+        '''group setattr/getattr'''
+
+        setattr(self.g, 'foo', 'bar')
+        self.assert_(getattr(self.g, 'foo') == 'bar')
+
+    def test_dir(self):
+        '''group dir'''
+
+        g = Group(**self.d)
+        self.assertListEqual(dir(g), sorted(self.d.keys()))
+
+    def test_subgroups(self):
+        '''group subgroup listing'''
+
+        g = Group(**dict(a=1, b=Group(name='foo'), c=Group(name='bar')))
+        self.assertListEqual(g._subgroups(), ['b', 'c'])
+
+    def test_members(self):
+        '''group members listing'''
+
+        g = Group(**dict(a=1, b=Group(name='foo'), c=Group(name='bar')))
+
+        self.assertListequal(g._members(), ['a', 'b', 'c'])
+
+    def test_publicmembers(self):
+        '''group public members listing'''
+
+        g 
+
+
+
+
+
+
+
+
+
+        
+
+
+
+
 class TestSymbolTable(TestCase):
 
     default_search_groups = ['_sys', '_builtin', '_math']
@@ -85,6 +152,6 @@ class TestSymbolTable(TestCase):
 
         
 
-if __name__ == '__main__':
+if __name__ == '__main__': # pragma: no cover
     suite = unittest.TestLoader().loadTestsFromTestCase(TestSymbolTable)
     unittest.TextTestRunner(verbosity=2).run(suite)

@@ -283,6 +283,8 @@ class SymbolTable(Group):
             grp = None
             msg = '%s not found' % group
             
+        # FIXME actually iterates over a group's attributes
+        # this might become incorrect after attributes refactored into dict
         if isgroup(grp):
             names = dir(grp)
             out = ['== %s ==' % group]
@@ -483,6 +485,20 @@ class SymbolTable(Group):
         self.set_frame((localGroup, globalGroup))
         yield
         self.restore_frame()
+
+    # make this class look like a dict
+    def __contains__(self, name):
+        return self.has_symbol(name)
+    def __getitem__(self, name):
+        return self.get_symbol(name)
+    def __setitem__(self, name, value):
+        self.set_symbol(name, value)
+    def __delitem__(self, name):
+        return self.del_symbol(name)
+    #def __iter__(self):
+    #    pass
+
+    
             
 # if __name__ == '__main__':
 #     symtab = SymbolTable()

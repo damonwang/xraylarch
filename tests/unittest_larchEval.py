@@ -146,7 +146,7 @@ class TestParse(TestCase):
                 ast.dump(self.li.compile(larchcode)))
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     for suite in (TestParse, TestLarchEval):
         suite = unittest.TestLoader().loadTestsFromTestCase(suite)
         unittest.ColoredTextTestRunner(verbosity=2).run(suite)
