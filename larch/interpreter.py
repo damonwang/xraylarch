@@ -792,18 +792,18 @@ class Interpreter:
         #   either sys.modules for python modules
         #   or  st_sys.modules for larch modules
         # reload takes effect here in the normal python way:
-        if do_reload or name not in chain(st_sys.modules, sys.modules):
-            # first look for "name.lar"
-            filename = search_dirs("%s.lar" % name, st_sys.path)
-            if filename is not None:
-                st_sys.modules[name] = thismod = Group(name=name)
-                with self.symtable.in_frame(thismod, thismod):
-                    self.eval_file(filename)
-                if len(self.error) > 0:
-                    st_sys.modules.pop(name)
-                    return
-            else: # or, if not a larch module, load as a regular python module
+        if name not in chain(st_sys.modules, sys.modules):
+            thismod = self.import_larch_module(name)
+            if thismod is None:
                 try: thismod = __import__(name)
+                except:
+                    self.raise_exception(None, msg='Import Error',
+                                         py_exc=sys.exc_info())
+                    return
+        elif do_reload:
+            thismod = self.import_larch_module(name)
+            if thismod is None:
+                try: thismod = reload(name)
                 except:
                     self.raise_exception(None, msg='Import Error',
                                          py_exc=sys.exc_info())
@@ -821,11 +821,25 @@ class Interpreter:
                 except: 
                     self.raise_exception(None, msg='Import Error',
                             py_exc=sys.exc_info())
+                    return
             targetgroup = st_sys.moduleGroup
             for sym, alias in izip_longest(fromlist, asname):
                 setattr(targetgroup, alias or sym, getattr(thismod, sym))
         # print("DONE")
     # end of import_module
+
+    def import_larch_module(self, name):
+        '''try to find name as a larch module and return it.'''
+
+        filename = search_dirs("%s.lar" % name, self.symtable._sys.path)
+        if filename is not None:
+            self.symtable._sys.modules[name] = thismod = Group(name=name)
+            with self.symtable.in_frame(thismod, thismod):
+                self.eval_file(filename)
+            if len(self.error) > 0:
+                self.symtable._sys.modules.pop(name)
+            else: 
+                return thismod
 
     def getAutoCompleteKeys(self):
         '''Return list of auto-completion keycodes.'''

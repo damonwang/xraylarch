@@ -5,6 +5,7 @@ import os
 import sys
 import copy
 from glob import glob
+from itertools import chain
 import help
 
 from .symboltable import Group, GroupAlias
@@ -113,20 +114,20 @@ def _which(name, larch=None, **kw):
 
 def _reload(mod,larch=None,**kw):
     """reload a module, either larch or python"""
+
     if larch is None: return None
-    modname = None
-    if mod in larch.symtable._sys.modules.values():
-        for k,v in larch.symtable._sys.modules.items():
-            if v == mod: modname = k
-    elif mod in sys.modules.values():
-        for k,v in sys.modules.items():
-            if v == mod: modname = k
-    elif (mod in larch.symtable._sys.modules.keys() or
-          mod in sys.modules.keys()):          
-        modname = mod
-    
-    if modname is not None:
+
+    if isinstance(mod, str):
+        return larch.import_module(mod, do_reload=True)
+
+    for k,v in chain(larch.symtable._sys.modules.iteritems(), sys.modules.iteritems()):
+        if v == mod:
+            modname = k
+            break
+    try:
         return larch.import_module(modname,do_reload=True)
+    except NameError:
+        pass
 
 def show_more(text,filename=None,writer=None,pagelength=30,prefix=''):
     """show lines of text in the style of more """
