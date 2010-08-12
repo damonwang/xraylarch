@@ -152,29 +152,33 @@ a =
 
         self.assert_(not hasattr(self.li.symtable.l_random, 'path'))
 
-    def do_reload_test(self, suffix):
+    def do_reload_test(self, suffix, do_reload=True):
         '''reload module'''
+
+        original, new = 1, 2
 
         tmpdir = tempfile.mkdtemp(prefix='larch')
         self.s._sys.path.insert(0, tmpdir)
 
-        with tempfile.NamedTemporaryFile(suffix=suffix, dir=tmpdir, delete=False) as tmpmod:
-            print('x = 1', file=tmpmod)
+        with tempfile.NamedTemporaryFile(suffix=suffix, dir=tmpdir,
+                delete=False) as tmpmod:
+            print('x = %i' % original, file=tmpmod)
             filename = tmpmod.name
             mod = os.path.basename(tmpmod.name).replace(suffix, '')
 
         self.eval('import %s' % mod)
         self.assert_(hasattr(self.s._sys.moduleGroup, mod))
-        self.assert_(getattr(self.s._sys.moduleGroup, mod).x == 1)
+        self.assert_(getattr(self.s._sys.moduleGroup, mod).x == original)
 
         with open(filename, 'w') as outf:
-            print('x = 2', file=outf)
+            print('x = %i' % new, file=outf)
 
         self.assert_(len(self.li.error) == 0)
-        self.li.import_module(mod, do_reload=True)
-        #pdb.set_trace()
+        self.li.import_module(mod, do_reload=do_reload)
         self.assert_(len(self.li.error) == 0)
-        self.assert_(getattr(self.s._sys.moduleGroup, mod).x == 2)
+
+        expected = new if do_reload else original 
+        self.assert_(getattr(self.s._sys.moduleGroup, mod).x == expected)
 
         os.unlink(filename)
         filename += 'c'
@@ -191,28 +195,16 @@ a =
         '''reload python module'''
 
         self.do_reload_test('.py')
-        return
 
+    def test_no_reload_larch(self):
+        '''lookup existing larch module'''
 
-        tmpdir = tempfile.mkdtemp(prefix='larch')
-        self.s._sys.path.insert(0, tmpdir)
-        with tempfile.NamedTemporaryFile(suffix='.py', dir=tmpdir, delete=False) as tmpmod:
-            print('x = 1', file=tmpmod)
-            filename,mod = tmpmod.name, os.path.basename(tmpmod.name)[:-3]
-        self.eval('import %s' % mod)
-        self.assert_(hasattr(self.s._sys.moduleGroup, mod))
-        self.assert_(getattr(self.s, mod).x == 1)
-        with open(filename, 'w') as outf:
-            print('x = 2', file=outf)
-        self.li.import_module(mod, do_reload=True)
-        self.assert_(getattr(self.s, mod).x == 2)
-        os.unlink(filename)
-        os.rmdir(tmpdir)
-        
+        self.do_reload_test('.lar', do_reload=False)
+
     def test_no_reload_python(self):
         '''lookup existing python module'''
 
-
+        self.do_reload_test('.py', do_reload=False)
 
 #------------------------------------------------------------------------------
 
