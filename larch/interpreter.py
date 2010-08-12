@@ -815,8 +815,6 @@ class Interpreter:
                 setattr(targetgroup, alias or sym, getattr(thismod, sym))
         # print("DONE")
     # end of import_module
-
-<<<<<<< HEAD
     def import_python(self, mod, do_reload=False):
         '''try to find name as a python module, import it, and return it.'''
 
@@ -861,6 +859,3 @@ class Interpreter:
         '''Return list of auto-completion keycodes.'''
 
         return map(ord, ['.'])
-
-=======
->>>>>>> parent of 5f46c1a... eliminated Closure class for a simpler lambda-based alternative

@@ -185,19 +185,32 @@ def _cs(namespace, larch=None, **kws):
         namespace = GroupAlias(obj=namespace, name="Alias for %s" % namespace)
     larch.symtable._sys.localGroup = namespace
 
-def larch_wrapper(func):
+class LarchCheck(object):
     '''makes sure func gets executed with a larch interpreter available.'''
 
-    def larch_check(*args, **kwargs):
-        if 'larch' not in kwargs:
-            raise RuntimeError('''%s needs a larch interpreter to execute, but
-            none was provided!''' % func.__name__)
-        return func(*args, **kwargs)
+    def __init__(self, func):
+        self.func = func
+        try:
+            self.__doc__ = func.__doc__
+        except AttributeError: 
+            pass
+    
+    def __getattr__(self, name):
+        return getattr(self.func, name)
 
-    return larch_check
+    def __call__(self, *args, **kwargs):
+
+        if 'larch' not in kwargs:
+            try:
+                name = func.__name__
+            except AttributeError:
+                name = 'This function'
+            raise RuntimeError('''%s needs a larch interpreter to execute, but
+            none was provided!''' % name)
+        return self.func(*args, **kwargs)
     
 context = locals().copy()
-local_funcs = dict([ (k[1:], larch_wrapper(context[k])) for k in context 
+local_funcs = dict([ (k[1:], LarchCheck(context[k])) for k in context 
     if k.startswith('_') and not k.startswith('__')])
 #local_funcs = {'group':_group,
 #               'showgroup':_showgroup,
