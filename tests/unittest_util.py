@@ -90,15 +90,15 @@ class TestCase(unittest.TestCase):
     def assertListEqual(self, A, B, do_print=False):
         '''A and B have the same items in the same order'''
 
-        if do_print:
-            print(A, B)
+        if do_print: print(A, B)
         self.assert_(len(A) == len(B))
         for a, b in zip(A, B):
             self.assert_(a == b)
 
-    def assertPathEqual(self, A, B):
+    def assertPathEqual(self, A, B, do_print=False):
         '''A and B are the same path according to os.path.normpath()'''
 
+        if do_print: print(A, B)
         self.assert_(os.path.normpath(A) == os.path.normpath(B))
     
     def assertNotRaises(self, excClass, *args, **kwargs):

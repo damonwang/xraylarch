@@ -10,6 +10,7 @@ from pydoc import pager
 import help
 
 from .symboltable import Group, GroupAlias
+from .util import normpath
 
 helper = help.Helper()
 
@@ -127,37 +128,25 @@ def show_more(text,filename=None,writer=None,pagelength=30,prefix=''): # pragma:
 
     pager(text)
 
-def _ls(dir='.', **kws):
+def _ls(dirname='.', **kws):
     " return list of files in the current directory "
-    dir.strip()
-    if len(dir) == 0: arg = '.'
-    if os.path.isdir(dir):
-        ret = os.listdir(dir)
+    dirname.strip()
+    if len(dirname) == 0: dirname = '.'
+    if os.path.isdir(dirname):
+        ret = os.listdir(dirname)
     else:
-        ret = glob(dir)
-    if sys.platform == 'win32':
-        for i, r in enumerate(ret):
-            ret[i] = ret[i].replace('\\','/')
-    return ret
-
+        ret = glob(dirname)
+    return normpath(*ret, unpack=False)
 
 def _cwd(x=None, **kws):
     "return current working directory"
-    ret = os.getcwd()
-    if sys.platform == 'win32':
-        ret = ret.replace('\\','/')
-    return ret
+    return normpath(os.getcwd())
 
 def _cd(name,**kwds):
     "change directorty"
     name = name.strip()
-    if name:
-        os.chdir(name)
-
-    ret = os.getcwd()
-    if sys.platform == 'win32':
-        ret = ret.replace('\\','/')
-    return ret
+    if name: os.chdir(name)
+    return normpath(os.getcwd())
 
 def _more(name,pagelength=24,larch=None, **kws):
     "list file contents"
