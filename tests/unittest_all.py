@@ -176,7 +176,7 @@ a =
         self.assert_(len(self.li.error) == 0)
         self.li.import_module(mod, do_reload=do_reload)
         self.assert_(len(self.li.error) == 0)
-
+    
         expected = new if do_reload else original 
         self.assert_(getattr(self.s._sys.moduleGroup, mod).x == expected)
 

@@ -213,6 +213,52 @@ class TestBuiltins(TestCase):
         reload_func('csv', self.li)
         self.assert_(log[0] == (('csv',), {'do_reload': True}))
 
+    def test_ls(self):
+        '''ls builtin'''
+
+        self.assertListEqual(self.eval("ls()"), os.listdir(os.getcwd()))
+
+    def test_ls_other(self):
+        '''ls builtin, non-working directory'''
+
+        dirname = self.li.symtable._sys.path[-1]
+        self.assertListEqual(self.eval("ls('%s')" % dirname), 
+                os.listdir(dirname))
+
+    def test_cwd(self):
+        '''cwd builtin'''
+
+        self.assertPathEqual(self.eval('cwd()'), os.getcwd())
+
+    def test_cd(self):
+        '''cd builtin'''
+
+        with temp_set(os.chdir, os.getcwd(), os.getcwd()):
+            dirname = self.li.symtable._sys.path[-1]
+            ret = self.eval('cd("%s")' % dirname)
+            self.assertPathEqual(ret, os.getcwd())
+            self.assertPathEqual(os.getcwd(), dirname)
+
+    def test_cs(self):
+        '''cs builtin'''
+
+        self.eval('g = group(a=5)')
+        self.assert_(self.eval('a') is None)
+        err_len = len(self.li.error)
+        self.assert_(err_len != 0)
+        self.eval('cs(g)')
+        self.assert_(self.s._sys.localGroup == self.s.g)
+        self.assert_(self.eval('a') == 5)
+        self.assert_(len(self.li.error) == err_len)
+
+    def test_cs_GroupAlias(self):
+        '''cs builtin uses GroupAlias'''
+
+        self.eval('d = dict()')
+        self.eval('cs(d)')
+        self.assert_('larch.symboltable.GroupAlias' in 
+                str(self.s._sys.localGroup.__class__))
+
 if __name__ == '__main__':  # pragma: no cover
     for suite in (TestParse, TestLarchEval):
         suite = unittest.TestLoader().loadTestsFromTestCase(suite)

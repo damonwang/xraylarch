@@ -93,6 +93,11 @@ class TestCase(unittest.TestCase):
         self.assert_(len(A) == len(B))
         for a, b in zip(A, B):
             self.assert_(a == b)
+
+    def assertPathEqual(self, A, B):
+        '''A and B are the same path according to os.path.normpath()'''
+
+        self.assert_(os.path.normpath(A) == os.path.normpath(B))
     
     def assertNotRaises(self, excClass, *args, **kwargs):
         '''fails if an error is raised'''

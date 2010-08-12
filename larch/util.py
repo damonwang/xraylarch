@@ -285,4 +285,3 @@ class LarchExceptionHolder:
         if node_col_offset > 0:
             out.append("    %s^^^" % ((node_col_offset)*' '))
         return (self.msg, '\n'.join(out))
-
