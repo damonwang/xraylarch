@@ -87,9 +87,11 @@ class TestCase(unittest.TestCase):
 
         return self.assertFalse(self.li(expr))
 
-    def assertListEqual(self, A, B):
+    def assertListEqual(self, A, B, do_print=False):
         '''A and B have the same items in the same order'''
 
+        if do_print:
+            print(A, B)
         self.assert_(len(A) == len(B))
         for a, b in zip(A, B):
             self.assert_(a == b)

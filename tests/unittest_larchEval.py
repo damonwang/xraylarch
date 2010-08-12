@@ -225,6 +225,14 @@ class TestBuiltins(TestCase):
         self.assertListEqual(self.eval("ls('%s')" % dirname), 
                 os.listdir(dirname))
 
+    def test_ls_glob(self):
+        '''ls builtin, glob'''
+
+        from glob import glob
+        dirname = os.path.join(os.path.dirname(larch.__file__), '*.py')
+        self.assertListEqual(sorted(map(os.path.normpath, glob(dirname))), 
+                sorted(map(os.path.normpath, self.eval("ls('%s')" % dirname))))
+
     def test_cwd(self):
         '''cwd builtin'''
 
@@ -272,7 +280,7 @@ class TestBuiltins(TestCase):
         '''more builtin notices nonexistent files'''
 
         log = []
-        with fake_call(larch.builtins.show_more, call_logger(log)):
+        with fake_call(larch.builtins.pager, call_logger(log)):
             self.eval('more("%s")' % 'sdlfksjdl')
         with self.get_stdout() as stdout:
             self.assert_('cannot open file' in stdout)

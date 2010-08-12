@@ -122,7 +122,7 @@ def _reload(mod,larch=None,**kw):
     except NameError:
         pass
 
-def show_more(text,filename=None,writer=None,pagelength=30,prefix=''):
+def show_more(text,filename=None,writer=None,pagelength=30,prefix=''): # pragma: no cover
     """show lines of text in the style of more """
 
     pager(text)
