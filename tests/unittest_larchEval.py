@@ -209,7 +209,7 @@ class TestBuiltins(TestCase):
 
         from larch.builtins import _reload as reload_func
         log = []
-        self.li.import_module = lambda *args, **kwargs: log.append((args, kwargs))
+        self.li.import_module = call_logger(log)
         reload_func('csv', self.li)
         self.assert_(log[0] == (('csv',), {'do_reload': True}))
 
@@ -258,6 +258,25 @@ class TestBuiltins(TestCase):
         self.eval('cs(d)')
         self.assert_('larch.symboltable.GroupAlias' in 
                 str(self.s._sys.localGroup.__class__))
+
+    def test_more(self):
+        '''more builtin shows file contents'''
+
+        log = []
+        with fake_call(larch.builtins.show_more, call_logger(log)):
+            self.eval('more("%s")' % larch.__file__)
+        with open(larch.__file__) as inf:
+            self.assert_(log[0] == ((inf.read(),), {}))
+
+    def test_more(self):
+        '''more builtin notices nonexistent files'''
+
+        log = []
+        with fake_call(larch.builtins.show_more, call_logger(log)):
+            self.eval('more("%s")' % 'sdlfksjdl')
+        with self.get_stdout() as stdout:
+            self.assert_('cannot open file' in stdout)
+
 
 if __name__ == '__main__':  # pragma: no cover
     for suite in (TestParse, TestLarchEval):

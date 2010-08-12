@@ -6,6 +6,7 @@ import sys
 import copy
 from glob import glob
 from itertools import chain
+from pydoc import pager
 import help
 
 from .symboltable import Group, GroupAlias
@@ -131,29 +132,8 @@ def _reload(mod,larch=None,**kw):
 
 def show_more(text,filename=None,writer=None,pagelength=30,prefix=''):
     """show lines of text in the style of more """
-    txt = text[:]
-    if isinstance(txt,str): txt = txt.split('\n')
-    if len(txt) <1: return
-    prompt = '== hit return for more, q to quit'
-    ps = "%s (%%.2f%%%%) == " % prompt
-    if filename: ps = "%s (%%.2f%%%%  of %s) == " % (prompt,filename)
 
-    if writer is None:  writer = sys.stdout
-
-    i = 0
-    for i in range(len(txt)):
-        if txt[i].endswith('\n'):
-            writer.write("%s%s" % (prefix,txt[i]))
-        else:
-            writer.write("%s%s\n" % (prefix,txt[i]))
-        i = i + 1
-        if i % pagelength == 0:
-            try:
-                x = raw_input(ps %  (100.*i/len(txt)))
-                if x in ('q','Q'): return
-            except KeyboardInterrupt:
-                writer.write("\n")
-                return
+    pager(text)
 
 def _ls(dir='.', **kws):
     " return list of files in the current directory "
@@ -187,19 +167,13 @@ def _cd(name,**kwds):
         ret = ret.replace('\\','/')
     return ret
 
-def _more(name,pagelength=24,**kws):
+def _more(name,pagelength=24,larch=None, **kws):
     "list file contents"
     try:
-        f = open(name)
-        l = f.readlines()
-
+        with open(name) as inf:
+            show_more(inf.read())
     except IOError:
-        print("cannot open file: %s." % name)
-        return
-    finally:
-        f.close()
-    show_more(l,filename=name,pagelength=pagelength)
-
+        print("cannot open file: %s." % name, file=larch.writer)
     
 def _help(*args,**kws):
     "show help on topic or object"

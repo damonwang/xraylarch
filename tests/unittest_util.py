@@ -128,6 +128,18 @@ class TestCase(unittest.TestCase):
 
         return self.li.interp(ast.parse(expr))
 
+    @contextmanager
+    def get_stdout(self, flush=True):
+        '''returns what has been written to stdout since last get_stdout().
+
+        By default, flushes stdout afterward.
+        ''' 
+
+        self.stdout.close()
+        with open(self.stdout.name) as inf:
+            yield inf.read()
+        os.unlink(self.stdout.name)
+        self.stdout = tempfile.NamedTemporaryFile(delete=False, prefix='larch')
 
 #------------------------------------------------------------------------------
 
