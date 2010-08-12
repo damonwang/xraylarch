@@ -85,6 +85,6 @@ class TestSymbolTable(TestCase):
 
         
 
-if __name__ == '__main__':
+if __name__ == '__main__': # pragma: no cover
     suite = unittest.TestLoader().loadTestsFromTestCase(TestSymbolTable)
     unittest.TextTestRunner(verbosity=2).run(suite)

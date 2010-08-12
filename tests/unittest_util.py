@@ -12,7 +12,7 @@ import larch
 #------------------------------------------------------------------------------
 
 @contextmanager
-def fake_call(original, replacement):
+def fake_call(original, replacement): # pragma: no cover
     '''context manager that swaps out a function when called with the
     given arguments. To be used for testing, not production.
 
@@ -35,7 +35,7 @@ def fake_call(original, replacement):
     setattr(orig_mod, orig_name, original)
 
 @contextmanager
-def temp_set(*args):
+def temp_set(*args): # pragma: no cover
     '''temp_set(setter, temporary, original) -> context management
     calls setter(temporary) before and setter(original) after
 

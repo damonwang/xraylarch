@@ -283,6 +283,8 @@ class SymbolTable(Group):
             grp = None
             msg = '%s not found' % group
             
+        # FIXME actually iterates over a group's attributes
+        # this might become incorrect after attributes refactored into dict
         if isgroup(grp):
             names = dir(grp)
             out = ['== %s ==' % group]

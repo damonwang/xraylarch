@@ -211,7 +211,7 @@ class TestBuiltins(TestCase):
         self.eval('reload(csv)')
         self.assert_(not self.s.csv.reader == self)
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     for suite in (TestParse, TestLarchEval):
         suite = unittest.TestLoader().loadTestsFromTestCase(suite)
         unittest.ColoredTextTestRunner(verbosity=2).run(suite)

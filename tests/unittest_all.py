@@ -10,16 +10,22 @@ import tempfile
 import pdb
 import shutil
 from contextlib import contextmanager
+
+# fix for my broken cygwin test environment
+# does not alter behavior in real DOS or in UNIX
+if '' not in sys.path: 
+    sys.path.insert(0, '')
+
+import larch
 from larch.interpreter import search_dirs
 from larch.symboltable import GroupAlias
 from unittest_larchEval import TestLarchEval, TestParse, TestBuiltins
 from unittest_SymbolTable import TestSymbolTable
 from unittest_util import *
-import larch
 
 #------------------------------------------------------------------------------
 
-class TestGroupAlias(TestCase):
+class TestGroupAlias(TestCase): 
 
     def test_create(self):
         '''construct a group from an object instance'''
@@ -299,17 +305,18 @@ class TestSearchDirs(TestCase):
 
 #------------------------------------------------------------------------------
 
-def get_args():
-    op = optparse.OptionParser()
-    op.add_option('-v', '--verbose', action='count', dest="verbosity")
-    options, args = op.parse_args()
-    return dict(verbosity=options.verbosity, tests=args)
+if __name__ == '__main__': # pragma: no cover
 
-def run_tests(verbosity=0, tests=[]):
-    tests = [ unittest.TestLoader().loadTestsFromTestCase(v) 
-            for k,v in globals().items() 
-            if k.startswith("Test") and (tests == [] or k in tests)]
-    unittest.TextTestRunner(verbosity=verbosity).run(unittest.TestSuite(tests))
+    def get_args():
+        op = optparse.OptionParser()
+        op.add_option('-v', '--verbose', action='count', dest="verbosity")
+        options, args = op.parse_args()
+        return dict(verbosity=options.verbosity, tests=args)
 
-if __name__ == '__main__':
+    def run_tests(verbosity=0, tests=[]):
+        tests = [ unittest.TestLoader().loadTestsFromTestCase(v) 
+                for k,v in globals().items() 
+                if k.startswith("Test") and (tests == [] or k in tests)]
+        unittest.TextTestRunner(verbosity=verbosity).run(unittest.TestSuite(tests))
+
     run_tests(**get_args())
