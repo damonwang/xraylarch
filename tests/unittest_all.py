@@ -152,6 +152,68 @@ a =
 
         self.assert_(not hasattr(self.li.symtable.l_random, 'path'))
 
+    def do_reload_test(self, suffix):
+        '''reload module'''
+
+        tmpdir = tempfile.mkdtemp(prefix='larch')
+        self.s._sys.path.insert(0, tmpdir)
+
+        with tempfile.NamedTemporaryFile(suffix=suffix, dir=tmpdir, delete=False) as tmpmod:
+            print('x = 1', file=tmpmod)
+            filename = tmpmod.name
+            mod = os.path.basename(tmpmod.name).replace(suffix, '')
+
+        self.eval('import %s' % mod)
+        self.assert_(hasattr(self.s._sys.moduleGroup, mod))
+        self.assert_(getattr(self.s._sys.moduleGroup, mod).x == 1)
+
+        with open(filename, 'w') as outf:
+            print('x = 2', file=outf)
+
+        self.assert_(len(self.li.error) == 0)
+        self.li.import_module(mod, do_reload=True)
+        #pdb.set_trace()
+        self.assert_(len(self.li.error) == 0)
+        self.assert_(getattr(self.s._sys.moduleGroup, mod).x == 2)
+
+        os.unlink(filename)
+        filename += 'c'
+        if os.path.isfile(filename):
+            os.unlink(filename)
+        os.rmdir(tmpdir)
+
+    def test_reload_larch(self):
+        '''reload larch module'''
+
+        self.do_reload_test('.lar')
+
+    def test_reload_python(self):
+        '''reload python module'''
+
+        self.do_reload_test('.py')
+        return
+
+
+        tmpdir = tempfile.mkdtemp(prefix='larch')
+        self.s._sys.path.insert(0, tmpdir)
+        with tempfile.NamedTemporaryFile(suffix='.py', dir=tmpdir, delete=False) as tmpmod:
+            print('x = 1', file=tmpmod)
+            filename,mod = tmpmod.name, os.path.basename(tmpmod.name)[:-3]
+        self.eval('import %s' % mod)
+        self.assert_(hasattr(self.s._sys.moduleGroup, mod))
+        self.assert_(getattr(self.s, mod).x == 1)
+        with open(filename, 'w') as outf:
+            print('x = 2', file=outf)
+        self.li.import_module(mod, do_reload=True)
+        self.assert_(getattr(self.s, mod).x == 2)
+        os.unlink(filename)
+        os.rmdir(tmpdir)
+        
+    def test_no_reload_python(self):
+        '''lookup existing python module'''
+
+
+
 #------------------------------------------------------------------------------
 
 class TestLarchSource(TestCase):

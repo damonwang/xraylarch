@@ -1,4 +1,7 @@
-.PHONY: test cover cover_html
+.PHONY: test cover cover_html test_builtins
+test_builtins:
+	/cygdrive/C/Python26/Scripts/coverage.exe run --rcfile=.coverage.ini tests/unittest_all.py TestBuiltins
+
 test:
 	/cygdrive/C/Python26/Scripts/coverage.exe run --rcfile=.coverage.ini tests/unittest_all.py
 

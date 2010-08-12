@@ -207,36 +207,11 @@ class TestBuiltins(TestCase):
     def test_reload_python(self):
         '''reload builtin, python'''
 
-        self.eval('import csv')
-        setattr(self.s.csv, 'reader', self)
-        self.assert_(self.s.csv.reader == self)
-        self.eval('reload(csv)')
-        self.assert_(not self.s.csv.reader == self)
-    
-    def test_reload_python_2(self):
-        '''reload builtin, python, as function'''
-
         from larch.builtins import _reload as reload_func
         log = []
         self.li.import_module = lambda *args, **kwargs: log.append((args, kwargs))
         reload_func('csv', self.li)
         self.assert_(log[0] == (('csv',), {'do_reload': True}))
-
-    def test_reload_loaded(self):
-        '''reload builtin, when already loaded'''
-
-        tmpdir = tempfile.mkdtemp(prefix='larch')
-        self.s._sys.path.insert(0, tmpdir)
-        with tempfile.NamedTemporaryFile(suffix='.lar', dir=tmpdir, delete=False) as tmpmod:
-            print('x = 1', file=tmpmod)
-            filename,mod = tmpmod.name, os.path.basename(tmpmod.name)[:-4]
-        self.eval('import %s' % mod)
-        self.assert_(hasattr(self.s._sys.moduleGroup, mod))
-        self.assert_(getattr(self.s, mod).x == 1)
-        with open(filename, 'w') as outf:
-            print('x = 2', file=outf)
-        self.eval('reload(%s)' % mod)
-        self.assert_(getattr(self.s, mod).x == 2)
 
 if __name__ == '__main__':  # pragma: no cover
     for suite in (TestParse, TestLarchEval):
