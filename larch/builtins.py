@@ -87,8 +87,6 @@ def _group(larch=None,**kw):
 #         return None
 
 def _showgroup(gname=None,larch=None):
-    if larch is None:
-        raise Warning("cannot show group -- larch broken?")
 
     if gname is None:
         gname = '_main'
@@ -99,15 +97,11 @@ def _copy(obj,**kw): # pragma: no cover
 
 def _run(name, larch=None, **kw):
     "run a larch file"
-    if larch is None:
-        raise Warning("cannot run file '%s' -- larch broken?" % name)
 
     larch.eval_file(name)
 
 def _which(name, larch=None, **kw):
     "print out fully resolved name of a symbol"
-    if larch is None:
-        raise Warning("cannot locate symobol '%s' -- larch broken?" % name)
 
     print("Find symbol %s" % name, file=larch.writer)
     print(larch.symtable.get_parent(name), file=larch.writer)
@@ -115,8 +109,6 @@ def _which(name, larch=None, **kw):
 
 def _reload(mod,larch=None,**kw):
     """reload a module, either larch or python"""
-
-    if larch is None: return None
 
     if isinstance(mod, str):
         return larch.import_module(mod, do_reload=True)
@@ -200,22 +192,35 @@ def _cs(namespace, larch=None, **kws):
         namespace
     '''
 
-    if larch is None: return
     if not isinstance(namespace, Group):
         namespace = GroupAlias(obj=namespace, name="Alias for %s" % namespace)
     larch.symtable._sys.localGroup = namespace
+
+def larch_wrapper(func):
+    '''makes sure func gets executed with a larch interpreter available.'''
+
+    def larch_check(*args, **kwargs):
+        if 'larch' not in kwargs:
+            raise RuntimeError('''%s needs a larch interpreter to execute, but
+            none was provided!''' % func.__name__)
+        return func(*args, **kwargs)
+
+    return larch_check
     
-local_funcs = {'group':_group,
-               'showgroup':_showgroup,
-               'reload':_reload,
-               'copy': _copy,
-               'more': _more,
-               'ls': _ls,
-               'cd': _cd,
-               'run': _run,
-               'which': _which,                
-               'cwd': _cwd, 
-               'help': _help,
-               'cs': _cs
-               }
-       
+context = locals().copy()
+local_funcs = dict([ (k[1:], larch_wrapper(context[k])) for k in context 
+    if k.startswith('_') and not k.startswith('__')])
+#local_funcs = {'group':_group,
+#               'showgroup':_showgroup,
+#               'reload':_reload,
+#               'copy': _copy,
+#               'more': _more,
+#               'ls': _ls,
+#               'cd': _cd,
+#               'run': _run,
+#               'which': _which,                
+#               'cwd': _cwd, 
+#               'help': _help,
+#               'cs': _cs
+#               }
+#       
