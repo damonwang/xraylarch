@@ -15,8 +15,8 @@ from . import inputText
 from . import builtins
 from .symboltable import SymbolTable, Group, isgroup
 from .util import LarchExceptionHolder, Procedure, DefinedVariable
+from .closure import Closure
 from .inputText import InputText
-from .closure import closure
 
 __version__ = '0.9.3'
 
@@ -130,7 +130,6 @@ class Interpreter:
         if symtable is None:
             symtable = SymbolTable(larch=self)
         self.symtable   = symtable
-
         self._interrupt = None
         self.error      = [] 
         self.expr       = None
@@ -155,8 +154,10 @@ class Interpreter:
                     setattr(mathgroup, fname, getattr(numpy, sym))
 
         for fname, fcn in list(builtins.local_funcs.items()):
-            setattr(builtingroup, fname, closure(fcn, larch=self))
-        setattr(builtingroup, 'definevar', self.set_definedvariable)
+            setattr(builtingroup, fname,
+                    Closure(func=fcn, larch=self))
+        setattr(builtingroup, 'definevar',
+                Closure(func=self.set_definedvariable))
         
         self.node_handlers = {}
         for tnode in self.supported_nodes:
@@ -815,6 +816,7 @@ class Interpreter:
         # print("DONE")
     # end of import_module
 
+<<<<<<< HEAD
     def import_python(self, mod, do_reload=False):
         '''try to find name as a python module, import it, and return it.'''
 
@@ -860,3 +862,5 @@ class Interpreter:
 
         return map(ord, ['.'])
 
+=======
+>>>>>>> parent of 5f46c1a... eliminated Closure class for a simpler lambda-based alternative
