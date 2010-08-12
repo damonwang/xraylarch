@@ -271,7 +271,7 @@ class TestBuiltins(TestCase):
         '''more builtin shows file contents'''
 
         log = []
-        with fake_call(larch.builtins.show_more, call_logger(log)):
+        with fake_call(larch.builtins.pager, call_logger(log)):
             self.eval('more("%s")' % larch.__file__)
         with open(larch.__file__) as inf:
             self.assert_(log[0] == ((inf.read(),), {}))
@@ -285,6 +285,10 @@ class TestBuiltins(TestCase):
         with self.get_stdout() as stdout:
             self.assert_('cannot open file' in stdout)
 
+    def test_help(self):
+        '''help builtin'''
+
+        pass
 
 if __name__ == '__main__':  # pragma: no cover
     for suite in (TestParse, TestLarchEval):
