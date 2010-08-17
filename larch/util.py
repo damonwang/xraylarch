@@ -230,7 +230,7 @@ class Procedure(object):
         del lgroup
         return retval
     
-class LarchExceptionHolder:
+class LarchExceptionHolder(Exception):
     "basic exception handler"
     def __init__(self, node, msg='', fname='<StdInput>',
                  py_exc=(None, None),

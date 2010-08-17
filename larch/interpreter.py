@@ -1,6 +1,7 @@
 '''Main Larch interpreter
 '''
 from __future__ import division, print_function, with_statement
+from contextlib import contextmanager
 import os
 import sys
 import ast
@@ -162,6 +163,8 @@ class Interpreter:
         self.node_handlers = {}
         for tnode in self.supported_nodes:
             self.node_handlers[tnode] = getattr(self, "on_%s" % tnode)
+
+        self.debug = kwargs.get('debug', False)
         
         self.read_rcfile()
 
@@ -236,14 +239,10 @@ class Interpreter:
     def raise_exception(self, node, msg='', expr=None,
                         fname=None, lineno=-1, py_exc=None):
         "add an exception"
-        if self.error is None:
-            self.error = []
-        if expr  is None:
-            expr  = self.expr
-        if fname is None:
-            fname = self.fname        
-        if lineno is None:
-            lineno = self.lineno
+        self.error = self.error or []
+        expr = expr or self.expr
+        fname = fname or self.fname
+        lineno = lineno or self.lineno
 
         if len(self.error) > 0 and not isinstance(node, ast.Module):
             msg = 'Extra Error (%s)' % msg
@@ -261,22 +260,35 @@ class Interpreter:
         self.symtable._sys.last_error = err
 
         # print("_Raise ", self.error)
+
+    @contextmanager
+    def catch(self, *args, **kwargs):
+        '''wraps exceptions in LarchExceptionHolders and queues them up.
+
+        Unless self.debug is True, in which case it lets them pass.
+        '''
+
+        if kwargs.get('debug', False) or self.debug: 
+            try: yield
+            except args, e:
+                self.raise_exception(None, msg=e.__class__.__name__, 
+                        py_exc=sys.exc_info())
+        else: yield
         
     # main entry point for Ast node evaluation
     #  compile:  string statement -> ast
     #  interp :  ast -> result
     #  eval   :  string statement -> result = interp(compile(statement))
-    def compile(self, text, fname=None, lineno=-4):
+    def compile(self, text, fname=None, lineno=-4, **kwargs):
         """compile statement/expression to Ast representation    """
         self.expr  = text
-        try:
+        self.fname = fname or self.fname
+        if lineno != -4: # FIXME why not None as the meaningless default?
+            self.lineno = lineno
+        with self.catch(SyntaxError, debug=kwargs.get('debug', False)):
             return ast.parse(text)
-        except:
-            self.raise_exception(None, msg='Syntax Error',
-                                 expr=text, fname=fname, lineno=lineno,
-                                 py_exc=sys.exc_info())
             
-    def interp(self, node, expr=None, fname=None, lineno=None):
+    def interp(self, node, expr=None, fname=None, lineno=None, **kwargs):
         """executes compiled Ast representation for an expression"""
         # Note: keep the 'node is None' test: internal code here may run
         #    interp(None) and expect a None in return.
@@ -284,12 +296,9 @@ class Interpreter:
             return None
         if isinstance(node, str):
             node = self.compile(node)
-        if lineno is not None:
-            self.lineno = lineno
-        if fname  is not None:
-            self.fname  = fname
-        if expr   is not None:
-            self.expr   = expr
+        self.lineno = lineno or self.lineno
+        self.fname  = fname or self.fname
+        self.expr   = expr or self.expr
        
         # get handler for this node:
         #   on_xxx with handle nodes of type 'xxx', etc
@@ -300,44 +309,26 @@ class Interpreter:
 
         # run the handler:  this will likely generate
         # recursive calls into this interp method.
-        try:
+        with self.catch(BaseException, debug=kwargs.get('debug', False)):
             #print(" Interp NODE ", ast.dump(node))
             ret = handler(node)
             if isinstance(ret, enumerate):
                 ret = list(ret)
             return ret
-
-        except:
-            self.raise_exception(node, msg='Runtime Error',
-                                 expr=expr, fname=fname, lineno=lineno,
-                                 py_exc=sys.exc_info())              
             
     def __call__(self, expr, **kw):
         return self.eval(expr, **kw)
         
-    def eval(self, expr, fname=None, lineno=0):
+    def eval(self, expr, fname=None, lineno=0, **kwargs):
         """evaluates a single statement"""
         self.fname = fname        
         self.lineno = lineno
         self.error = []
 
-        node = self.compile(expr, fname=fname, lineno=lineno)
+        with self.catch(SyntaxError, debug=kwargs.get('debug', True)):
+            node = self.compile(expr, fname=fname, lineno=lineno)
         # print("COMPILE ", ast.dump(node))
-        out = None
-        if len(self.error) > 0:
-            self.raise_exception(node, msg='Eval Error', expr=expr,
-                                 fname=fname, lineno=lineno,
-                                 py_exc=sys.exc_info())
-        else:            
-            # print(" -> interp ", node, expr,  fname, lineno)
-            out = self.interp(node, expr=expr,
-                              fname=fname, lineno=lineno)
-
-        if len(self.error) > 0:
-            self.raise_exception(node, msg='Eval Error', expr=expr,
-                                 fname=fname, lineno=lineno,
-                                 py_exc=sys.exc_info())
-        return out
+        return self.interp(node, expr=expr, fname=fname, lineno=lineno)
         
     def dump(self, node, **kw):
         "simple ast dumper"
@@ -445,8 +436,8 @@ class Interpreter:
             sym = self.symtable.set_symbol(nod.id, value=val)
         elif nod.__class__ == ast.Attribute:
             if nod.ctx.__class__  == ast.Load:
-                errmsg = "cannot assign to attribute %s" % nod.attr
-                self.raise_exception(nod, errmsg)
+                raise LarchExceptionHolder(nod, 
+                        msg="cannot assign to attribute %s" % nod.attr)
 
             setattr(self.interp(nod.value), nod.attr, val)
             
@@ -467,6 +458,7 @@ class Interpreter:
                 raise ValueError('too many values to unpack')
 
     def on_attribute(self, node):    # ('value', 'attr', 'ctx')
+        #FIXME
         "extract attribute"
         ctx = node.ctx.__class__
         # print("on_attribute",node.value,node.attr,ctx)
@@ -485,13 +477,14 @@ class Interpreter:
                     fmt = "%s does not have attribute '%s'"
                 msg = fmt % (obj, node.attr)
 
-                self.raise_exception(node, msg=msg, py_exc=sys.exc_info())
+                raise LarchExceptionHolder(node, msg=msg,
+                        py_exc=sys.exc_info())
 
         elif ctx == ast.Del:
             return delattr(sym, node.attr)
         elif ctx == ast.Store:
-            msg = "attribute for storage: shouldn't be here!"
-            self.raise_exception(node, msg=msg, py_exc=sys.exc_info())        
+            raise LarchExceptionHolder(node, 
+                    msg="attribute for storage: shouldn't be here!")
 
     def on_assign(self, node):    # ('targets', 'value')
         "simple assignment"
@@ -522,23 +515,20 @@ class Interpreter:
     def on_subscript(self, node):    # ('value', 'slice', 'ctx') 
         "subscript handling -- one of the tricky parts"
         # print("on_subscript: ", ast.dump(node))
-        val    = self.interp(node.value)
-        nslice = self.interp(node.slice)
-        ctx = node.ctx.__class__
-        if ctx in ( ast.Load, ast.Store):
+        val, nslice = self.interp(node.value), self.interp(node.slice)
+        if node.ctx.__class__ in ( ast.Load, ast.Store):
             if isinstance(node.slice, (ast.Index, ast.Slice, ast.Ellipsis)):
                 return val.__getitem__(nslice)
             elif isinstance(node.slice, ast.ExtSlice):
                 return val[(nslice)]
-        else:
-            msg = "subscript with unknown context"
-            self.raise_exception(node, msg=msg, py_exc=sys.exc_info())
+        else: raise LarchExceptionHolder(node, 
+                msg="subscript with unknown context")
 
     def on_delete(self, node):    # ('targets',)
         "delete statement"
         for tnode in node.targets:
             if tnode.ctx.__class__ != ast.Del:
-                break
+                break # FIXME when does this happen? Can we throw an error?
             children = []
             while tnode.__class__ == ast.Attribute:
                 children.append(tnode.attr)
@@ -546,11 +536,9 @@ class Interpreter:
 
             if tnode.__class__ == ast.Name:
                 children.append(tnode.id)
-                children.reverse()
-                self.symtable.del_symbol('.'.join(children))
-            else:
-                msg = "could not delete symbol"
-                self.raise_exception(node, msg=msg, py_exc=sys.exc_info())
+                self.symtable.del_symbol('.'.join(children[::-1]))
+            else: raise LarchExceptionHolder(node,
+                    msg="could not delete symbol")
             
     def on_unaryop(self, node):    # ('op', 'operand')
         "unary operator"

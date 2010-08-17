@@ -181,10 +181,9 @@ class TestBuiltins(TestCase):
         self.assert_(hasattr(self.li.symtable, 'laplace'))
 
     def test_run_nonexistent(self):
-        '''run builting with nonexistent file'''
+        '''run builtin with nonexistent file'''
 
-        self.eval(r'run("nonexistent_lasdfjsdl")')
-        self.assert_("No such file" in self.li.error[0].get_error()[1])
+        self.assertRaises(IOError, self.eval, r'run("nonexistent_lasdfjsdl")')
 
     def test_which(self):
         '''which builtin'''
@@ -251,13 +250,10 @@ class TestBuiltins(TestCase):
         '''cs builtin'''
 
         self.eval('g = group(a=5)')
-        self.assert_(self.eval('a') is None)
-        err_len = len(self.li.error)
-        self.assert_(err_len != 0)
+        self.assertRaises(LookupError, self.eval, 'a')
         self.eval('cs(g)')
         self.assert_(self.s._sys.localGroup == self.s.g)
         self.assert_(self.eval('a') == 5)
-        self.assert_(len(self.li.error) == err_len)
 
     def test_cs_GroupAlias(self):
         '''cs builtin uses GroupAlias'''
