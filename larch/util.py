@@ -4,6 +4,7 @@
 from __future__ import print_function
 import re
 import sys
+import os
 
 from .symboltable import Group
 
@@ -285,4 +286,23 @@ class LarchExceptionHolder:
         if node_col_offset > 0:
             out.append("    %s^^^" % ((node_col_offset)*' '))
         return (self.msg, '\n'.join(out))
+
+def normpath(*paths, **kwargs):
+    '''normpath(path, path, ...[, unix=True, one=True]) -> path or [path]
+
+    normalizes paths using os.path.normpath.
+    
+    if one=True and only one path is given, returns the path bare (not in a
+        one-elt list)
+    
+    if unix=True, converts Windows-style backslash paths to UNIX-style slash
+        paths.
+    '''
+
+    ret = map(os.path.normpath, paths)
+    if sys.platform == 'win32' and kwargs.get('unix'): 
+        ret = [ p.replace(r'\\', '/') for p in ret ]
+    if kwargs.get('one', True) and len(ret) == 1: return ret[0]
+    else: return ret
+
 

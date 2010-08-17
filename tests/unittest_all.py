@@ -19,7 +19,7 @@ if '' not in sys.path:
 import larch
 from larch.interpreter import search_dirs
 from larch.symboltable import GroupAlias
-from unittest_larchEval import TestLarchEval, TestParse
+from unittest_larchEval import TestLarchEval, TestParse, TestBuiltins
 from unittest_SymbolTable import TestSymbolTable
 from unittest_util import *
 
@@ -151,6 +151,60 @@ a =
         self.li('import l_random')
 
         self.assert_(not hasattr(self.li.symtable.l_random, 'path'))
+
+    def do_reload_test(self, suffix, do_reload=True):
+        '''reload module'''
+
+        original, new = 1, 2
+
+        tmpdir = tempfile.mkdtemp(prefix='larch')
+        self.s._sys.path.insert(0, tmpdir)
+
+        with tempfile.NamedTemporaryFile(suffix=suffix, dir=tmpdir,
+                delete=False) as tmpmod:
+            print('x = %i' % original, file=tmpmod)
+            filename = tmpmod.name
+            mod = os.path.basename(tmpmod.name).replace(suffix, '')
+
+        self.eval('import %s' % mod)
+        self.assert_(hasattr(self.s._sys.moduleGroup, mod))
+        self.assert_(getattr(self.s._sys.moduleGroup, mod).x == original)
+
+        with open(filename, 'w') as outf:
+            print('x = %i' % new, file=outf)
+
+        self.assert_(len(self.li.error) == 0)
+        self.li.import_module(mod, do_reload=do_reload)
+        self.assert_(len(self.li.error) == 0)
+    
+        expected = new if do_reload else original 
+        self.assert_(getattr(self.s._sys.moduleGroup, mod).x == expected)
+
+        os.unlink(filename)
+        filename += 'c'
+        if os.path.isfile(filename):
+            os.unlink(filename)
+        os.rmdir(tmpdir)
+
+    def test_reload_larch(self):
+        '''reload larch module'''
+
+        self.do_reload_test('.lar')
+
+    def test_reload_python(self):
+        '''reload python module'''
+
+        self.do_reload_test('.py')
+
+    def test_no_reload_larch(self):
+        '''lookup existing larch module'''
+
+        self.do_reload_test('.lar', do_reload=False)
+
+    def test_no_reload_python(self):
+        '''lookup existing python module'''
+
+        self.do_reload_test('.py', do_reload=False)
 
 #------------------------------------------------------------------------------
 

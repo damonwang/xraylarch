@@ -1,12 +1,16 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
 import unittest
 import code
 import ast
 import numpy
 import os
+import pdb
+import tempfile
 
 import larch
+from larch.symboltable import isgroup
 from unittest_util import *
 
 class TestLarchEval(TestCase):
@@ -145,6 +149,146 @@ class TestParse(TestCase):
         self.assertTrue(ast.dump(ast.parse(larchcode)) == 
                 ast.dump(self.li.compile(larchcode)))
 
+class TestBuiltins(TestCase):
+
+    # These probably aren't unit tests any more, but going through the eval
+    # was the easier way to test these functions, even if we are now relying
+    # on the interpretation layer to call the builtins correctly.
+
+    def test_group(self):
+        '''group builtin'''
+
+        self.eval('g = group()')
+        self.assert_(isgroup(self.li.symtable.g))
+
+    def test_showgroup(self):
+        '''showgroup builtin'''
+
+        self.eval('g = group()')
+        self.assert_(self.eval('showgroup(g)') == self.li.symtable.show_group(self.li.symtable.g))
+
+    def test_showgroup_defarg(self):
+        '''showgroup builtin default argument'''
+
+        self.eval('g = group()')
+        self.assert_(self.eval('showgroup()') == self.s.show_group(self.s._main))
+
+    def test_run(self):
+        '''run builtin'''
+
+        self.eval(r'run("larch/modules/l_random.lar")')
+        #pdb.set_trace()
+        self.assert_(hasattr(self.li.symtable, 'laplace'))
+
+    def test_run_nonexistent(self):
+        '''run builting with nonexistent file'''
+
+        self.eval(r'run("nonexistent_lasdfjsdl")')
+        self.assert_("No such file" in self.li.error[0].get_error()[1])
+
+    def test_which(self):
+        '''which builtin'''
+
+        self.eval('g = group()')
+        self.eval('which("g")')
+        self.stdout.close()
+        with open(self.stdout.name) as outf:
+            self.assert_(str(self.s.get_parent('g')) in outf.read())
+
+    def test_reload_larch(self):
+        '''reload builtin, larch'''
+
+        self.eval('import l_random')
+        delattr(self.s.l_random, 'bytes')
+        self.assert_(not hasattr(self.s.l_random, 'bytes'))
+        self.eval('reload(l_random)')
+        self.assert_(hasattr(self.s.l_random, 'bytes'))
+
+    def test_reload_python(self):
+        '''reload builtin, python'''
+
+        from larch.builtins import _reload as reload_func
+        log = []
+        self.li.import_module = call_logger(log)
+        reload_func('csv', self.li)
+        self.assert_(log[0] == (('csv',), {'do_reload': True}))
+
+    def test_ls(self):
+        '''ls builtin'''
+
+        self.assertListEqual(self.eval("ls()"), os.listdir(os.getcwd()))
+
+    def test_ls_other(self):
+        '''ls builtin, non-working directory'''
+
+        dirname = self.li.symtable._sys.path[-1]
+        self.assertListEqual(self.eval("ls('%s')" % dirname), 
+                os.listdir(dirname))
+
+    def test_ls_glob(self):
+        '''ls builtin, glob'''
+
+        from glob import glob
+        dirname = os.path.join(os.path.dirname(larch.__file__), '*.py')
+        self.assertListEqual(sorted(map(os.path.normpath, glob(dirname))), 
+                sorted(map(os.path.normpath, self.eval("ls('%s')" % dirname))))
+
+    def test_cwd(self):
+        '''cwd builtin'''
+
+        self.assertPathEqual(self.eval('cwd()'), os.getcwd())
+
+    def test_cd(self):
+        '''cd builtin'''
+
+        with temp_set(os.chdir, os.getcwd(), os.getcwd()):
+            dirname = self.li.symtable._sys.path[-1]
+            ret = self.eval('cd("%s")' % dirname)
+            self.assertPathEqual(ret, os.getcwd())
+            self.assertPathEqual(os.getcwd(), dirname)
+
+    def test_cs(self):
+        '''cs builtin'''
+
+        self.eval('g = group(a=5)')
+        self.assert_(self.eval('a') is None)
+        err_len = len(self.li.error)
+        self.assert_(err_len != 0)
+        self.eval('cs(g)')
+        self.assert_(self.s._sys.localGroup == self.s.g)
+        self.assert_(self.eval('a') == 5)
+        self.assert_(len(self.li.error) == err_len)
+
+    def test_cs_GroupAlias(self):
+        '''cs builtin uses GroupAlias'''
+
+        self.eval('d = dict()')
+        self.eval('cs(d)')
+        self.assert_('larch.symboltable.GroupAlias' in 
+                str(self.s._sys.localGroup.__class__))
+
+    def test_more(self):
+        '''more builtin shows file contents'''
+
+        log = []
+        with fake_call(larch.builtins.pager, call_logger(log)):
+            self.eval('more("%s")' % larch.__file__)
+        with open(larch.__file__) as inf:
+            self.assert_(log[0] == ((inf.read(),), {}))
+
+    def test_more(self):
+        '''more builtin notices nonexistent files'''
+
+        log = []
+        with fake_call(larch.builtins.pager, call_logger(log)):
+            self.eval('more("%s")' % 'sdlfksjdl')
+        with self.get_stdout() as stdout:
+            self.assert_('cannot open file' in stdout)
+
+    def test_help(self):
+        '''help builtin'''
+
+        pass
 
 if __name__ == '__main__':  # pragma: no cover
     for suite in (TestParse, TestLarchEval):

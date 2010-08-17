@@ -60,6 +60,22 @@ def temp_set(*args): # pragma: no cover
 
 #------------------------------------------------------------------------------
 
+def call_logger(log):
+    '''returns a function that writes its calls into log. e.g., 
+        >>> log = []
+        >>> f = call_logger(log)
+        >>> f(1)
+        >>> f(1, 2, 3, foo='bar')
+        >>> log
+        [((1,),{}), ((1, 2, 3), {'foo': 'bar'})]
+
+    log can be anything with an `append` method.
+    '''
+
+    return lambda *args, **kwargs: log.append((args, kwargs))
+
+#------------------------------------------------------------------------------
+
 class TestCase(unittest.TestCase):
     def true(self, expr):
         '''assert that larch evaluates expr to True'''
@@ -71,12 +87,19 @@ class TestCase(unittest.TestCase):
 
         return self.assertFalse(self.li(expr))
 
-    def assertListEqual(self, A, B):
+    def assertListEqual(self, A, B, do_print=False):
         '''A and B have the same items in the same order'''
 
+        if do_print: print(A, B)
         self.assert_(len(A) == len(B))
         for a, b in zip(A, B):
             self.assert_(a == b)
+
+    def assertPathEqual(self, A, B, do_print=False):
+        '''A and B are the same path according to os.path.normpath()'''
+
+        if do_print: print(A, B)
+        self.assert_(os.path.normpath(A) == os.path.normpath(B))
     
     def assertNotRaises(self, excClass, *args, **kwargs):
         '''fails if an error is raised'''
@@ -90,6 +113,7 @@ class TestCase(unittest.TestCase):
         self.stdout = tempfile.NamedTemporaryFile(delete=False, prefix='larch')
         self.li = larch.Interpreter(writer=self.stdout)
         self.n = lambda : self.li.symtable.n
+        self.s = self.li.symtable
 
     def tearDown(self):
         if not self.stdout.closed:
@@ -106,6 +130,18 @@ class TestCase(unittest.TestCase):
 
         return self.li.interp(ast.parse(expr))
 
+    @contextmanager
+    def get_stdout(self, flush=True):
+        '''returns what has been written to stdout since last get_stdout().
+
+        By default, flushes stdout afterward.
+        ''' 
+
+        self.stdout.close()
+        with open(self.stdout.name) as inf:
+            yield inf.read()
+        os.unlink(self.stdout.name)
+        self.stdout = tempfile.NamedTemporaryFile(delete=False, prefix='larch')
 
 #------------------------------------------------------------------------------
 
@@ -148,5 +184,12 @@ class TestUtils(TestCase):
         self.assertNotRaises(IndexError, f, False, 3, 1, 1, 2, 3, a=5)
         self.assertRaises(self.failureException, self.assertNotRaises,
                 IndexError, f, True, 0, 0)
+
+    def test_call_logger(self):
+        a = []
+        f = call_logger(a)
+        f(1)
+        f(1, 2, 3, foo='bar')
+        self.assertListEqual(a, [((1,),{}), ((1, 2, 3), dict(foo='bar'))])
 
 #------------------------------------------------------------------------------

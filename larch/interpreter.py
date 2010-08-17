@@ -794,24 +794,11 @@ class Interpreter:
         #   or  st_sys.modules for larch modules
         # reload takes effect here in the normal python way:
         if do_reload or name not in chain(st_sys.modules, sys.modules):
-            # first look for "name.lar"
-            filename = search_dirs("%s.lar" % name, st_sys.path)
-            if filename is not None:
-                st_sys.modules[name] = thismod = Group(name=name)
-                with self.symtable.in_frame(thismod, thismod):
-                    self.eval_file(filename)
-                if len(self.error) > 0:
-                    st_sys.modules.pop(name)
-                    return
-            else: # or, if not a larch module, load as a regular python module
-                try: thismod = __import__(name)
-                except:
-                    self.raise_exception(None, msg='Import Error',
-                                         py_exc=sys.exc_info())
-                    return
+            thismod = (self.import_larch(name) or 
+                self.import_python(name, do_reload))
         # previously loaded module, just do lookup
         else: thismod = st_sys.modules.get(name) or sys.modules.get(name)
-               
+
         # now we install thismodule into the current moduleGroup
         if fromlist is None: # import full module
             setattr(st_sys.moduleGroup, asname or name, thismod)
@@ -822,9 +809,53 @@ class Interpreter:
                 except: 
                     self.raise_exception(None, msg='Import Error',
                             py_exc=sys.exc_info())
+                    return
             targetgroup = st_sys.moduleGroup
             for sym, alias in izip_longest(fromlist, asname):
                 setattr(targetgroup, alias or sym, getattr(thismod, sym))
         # print("DONE")
     # end of import_module
+    def import_python(self, mod, do_reload=False):
+        '''try to find name as a python module, import it, and return it.'''
 
+        if do_reload:
+            mod = sys.modules[mod]
+            self.clear_pyc(mod.__file__)
+            f = reload
+        else: f = __import__
+
+        try: 
+            thismod = f(mod)
+        except:
+            self.raise_exception(None, msg='Import Error',
+                                 py_exc=sys.exc_info())
+            return
+        return thismod
+
+    def import_larch(self, name):
+        '''try to find name as a larch module, import it, and return it.'''
+
+        filename = search_dirs("%s.lar" % name, self.symtable._sys.path)
+        if filename is not None:
+            self.symtable._sys.modules[name] = thismod = Group(name=name)
+            with self.symtable.in_frame(thismod, thismod):
+                self.eval_file(filename)
+            if len(self.error) > 0:
+                self.symtable._sys.modules.pop(name)
+            else: 
+                return thismod
+
+    def clear_pyc(self, filename):
+        '''if this .py filename has an associated .pyc cache, delete it.'''
+
+        if not filename.endswith('.py') or filename.endswith('.pyc'):
+            return
+        if filename.endswith('.py'):
+            filename += 'c'
+        if os.path.isfile(filename):
+            os.unlink(filename)
+
+    def getAutoCompleteKeys(self):
+        '''Return list of auto-completion keycodes.'''
+
+        return map(ord, ['.'])

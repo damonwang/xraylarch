@@ -28,7 +28,7 @@ class Helper(object):
     def show_symbol(self,arg):
         "show help for a symbol in the symbol table"
         if isinstance(arg, str):
-            sym = self.larch.symtable.getSymbol(arg,create=False)
+            sym = self.larch.symtable.get_symbol(arg,create=False)
             out = None
         else:
             out = sym = arg
@@ -40,11 +40,10 @@ class Helper(object):
         atype = self.TypeNames.get(atype,atype)
 
         if out is None:
-            if callable(sym) and len(sym.__doc__) > 1:
-                hout = sym.__doc__
-            else:
-                hout = repr(sym)
-            out = "%s = %s" % (arg,hout)
+            try: sym.__doc__[1] 
+            except (AttributeError, TypeError, IndexError): 
+                out = '%s = %s' % (arg, repr(sym))
+            else: out = '%s = %s' % (arg, sym.__doc__)
 
         if atype in ('<tuple>','<list>','<dict>','<array>'):
             out = "%s %s" % (out,atype)

@@ -1,5 +1,6 @@
 #!/usr/bin/env python2.6
 #
+from __future__ import print_function
 import cmd
 import os
 import sys
@@ -55,7 +56,7 @@ class shell(cmd.Cmd):
                 sys.stdout.write("%s\n" % userbanner)
             
         
-        self.larch  = Interpreter()
+        self.larch  = Interpreter(writer=self.stdout)
         self.input  = InputText(prompt=self.ps1)
         self.prompt = self.ps1
         

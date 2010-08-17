@@ -1,11 +1,16 @@
+#!/usr/bin/env python
 
+from __future__ import print_function
 import os
 import sys
 import copy
 from glob import glob
+from itertools import chain
+from pydoc import pager
 import help
 
 from .symboltable import Group, GroupAlias
+from .util import normpath
 
 helper = help.Helper()
 
@@ -83,135 +88,73 @@ def _group(larch=None,**kw):
 #         return None
 
 def _showgroup(gname=None,larch=None):
-    if larch is None:
-        raise Warning("cannot show group -- larch broken?")
 
     if gname is None:
         gname = '_main'
     return larch.symtable.show_group(gname)
 
-def _copy(obj,**kw):
+def _copy(obj,**kw): # pragma: no cover
     return copy.deepcopy(obj)
 
 def _run(name, larch=None, **kw):
     "run a larch file"
-    if larch is None:
-        raise Warning("cannot run file '%s' -- larch broken?" % name)
-        
-    try:
-        inpf = open(name, 'r')
-    except:
-        raise Warning("cannot run file '%s' -- file not found" % name)        
 
-
-    larch.inptext.interactive = False
-    for itxt, txt in enumerate(inpf.readlines()):
-        larch.inptext.put(txt[:-1], lineno=itxt,  filename=name)
-    larch.execute('')
-    larch.inptext.interactive = True
-    inpf.close()
-
+    larch.eval_file(name)
 
 def _which(name, larch=None, **kw):
     "print out fully resolved name of a symbol"
-    if larch is None:
-        raise Warning("cannot locate symobol '%s' -- larch broken?" % name)
 
-    print("Find symbol %s" % name)
-    print( larch.symbtable.get_parent(name))
+    print("Find symbol %s" % name, file=larch.writer)
+    print(larch.symtable.get_parent(name), file=larch.writer)
     
-    
-
-
 
 def _reload(mod,larch=None,**kw):
     """reload a module, either larch or python"""
-    if larch is None: return None
-    modname = None
-    if mod in larch.symtable._sys.modules.values():
-        for k,v in larch.symtable._sys.modules.items():
-            if v == mod: modname = k
-    elif mod in sys.modules.values():
-        for k,v in sys.modules.items():
-            if v == mod: modname = k
-    elif (mod in larch.symtable._sys.modules.keys() or
-          mod in sys.modules.keys()):          
-        modname = mod
-    
-    if modname is not None:
+
+    if isinstance(mod, str):
+        return larch.import_module(mod, do_reload=True)
+
+    for k,v in chain(larch.symtable._sys.modules.iteritems(), sys.modules.iteritems()):
+        if v == mod:
+            modname = k
+            break
+    try:
         return larch.import_module(modname,do_reload=True)
+    except NameError:
+        pass
 
-def show_more(text,filename=None,writer=None,pagelength=30,prefix=''):
+def show_more(text,filename=None,writer=None,pagelength=30,prefix=''): # pragma: no cover
     """show lines of text in the style of more """
-    txt = text[:]
-    if isinstance(txt,str): txt = txt.split('\n')
-    if len(txt) <1: return
-    prompt = '== hit return for more, q to quit'
-    ps = "%s (%%.2f%%%%) == " % prompt
-    if filename: ps = "%s (%%.2f%%%%  of %s) == " % (prompt,filename)
 
-    if writer is None:  writer = sys.stdout
+    pager(text)
 
-    i = 0
-    for i in range(len(txt)):
-        if txt[i].endswith('\n'):
-            writer.write("%s%s" % (prefix,txt[i]))
-        else:
-            writer.write("%s%s\n" % (prefix,txt[i]))
-        i = i + 1
-        if i % pagelength == 0:
-            try:
-                x = raw_input(ps %  (100.*i/len(txt)))
-                if x in ('q','Q'): return
-            except KeyboardInterrupt:
-                writer.write("\n")
-                return
-
-def _ls(dir='.', **kws):
+def _ls(dirname='.', **kws):
     " return list of files in the current directory "
-    dir.strip()
-    if len(dir) == 0: arg = '.'
-    if os.path.isdir(dir):
-        ret = os.listdir(dir)
+    dirname.strip()
+    if len(dirname) == 0: dirname = '.'
+    if os.path.isdir(dirname):
+        ret = os.listdir(dirname)
     else:
-        ret = glob(dir)
-    if sys.platform == 'win32':
-        for i, r in enumerate(ret):
-            ret[i] = ret[i].replace('\\','/')
-    return ret
-
+        ret = glob(dirname)
+    return normpath(*ret, unpack=False)
 
 def _cwd(x=None, **kws):
     "return current working directory"
-    ret = os.getcwd()
-    if sys.platform == 'win32':
-        ret = ret.replace('\\','/')
-    return ret
+    return normpath(os.getcwd())
 
 def _cd(name,**kwds):
     "change directorty"
     name = name.strip()
-    if name:
-        os.chdir(name)
+    if name: os.chdir(name)
+    return normpath(os.getcwd())
 
-    ret = os.getcwd()
-    if sys.platform == 'win32':
-        ret = ret.replace('\\','/')
-    return ret
-
-def _more(name,pagelength=24,**kws):
+def _more(name,pagelength=24,larch=None, **kws):
     "list file contents"
     try:
-        f = open(name)
-        l = f.readlines()
-
+        with open(name) as inf:
+            show_more(inf.read())
     except IOError:
-        print "cannot open file: %s." % name
-        return
-    finally:
-        f.close()
-    show_more(l,filename=name,pagelength=pagelength)
-
+        print("cannot open file: %s." % name, file=larch.writer)
     
 def _help(*args,**kws):
     "show help on topic or object"
@@ -238,22 +181,48 @@ def _cs(namespace, larch=None, **kws):
         namespace
     '''
 
-    if larch is None: return
     if not isinstance(namespace, Group):
         namespace = GroupAlias(obj=namespace, name="Alias for %s" % namespace)
     larch.symtable._sys.localGroup = namespace
+
+class LarchCheck(object):
+    '''makes sure func gets executed with a larch interpreter available.'''
+
+    def __init__(self, func):
+        self.func = func
+        try:
+            self.__doc__ = func.__doc__
+        except AttributeError: 
+            pass
     
-local_funcs = {'group':_group,
-               'showgroup':_showgroup,
-               'reload':_reload,
-               'copy': _copy,
-               'more': _more,
-               'ls': _ls,
-               'cd': _cd,
-               'run': _run,
-               'which': _which,                
-               'cwd': _cwd, 
-               'help': _help,
-               'cs': _cs
-               }
-       
+    def __getattr__(self, name):
+        return getattr(self.func, name)
+
+    def __call__(self, *args, **kwargs):
+
+        if 'larch' not in kwargs:
+            try:
+                name = func.__name__
+            except AttributeError:
+                name = 'This function'
+            raise RuntimeError('''%s needs a larch interpreter to execute, but
+            none was provided!''' % name)
+        return self.func(*args, **kwargs)
+    
+context = locals().copy()
+local_funcs = dict([ (k[1:], LarchCheck(context[k])) for k in context 
+    if k.startswith('_') and not k.startswith('__')])
+#local_funcs = {'group':_group,
+#               'showgroup':_showgroup,
+#               'reload':_reload,
+#               'copy': _copy,
+#               'more': _more,
+#               'ls': _ls,
+#               'cd': _cd,
+#               'run': _run,
+#               'which': _which,                
+#               'cwd': _cwd, 
+#               'help': _help,
+#               'cs': _cs
+#               }
+#       
