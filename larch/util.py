@@ -100,6 +100,7 @@ class DefinedVariable(object):
             msg = "Cannot compile '%s'"  % (self.expr)
             raise Warning(msg)
             
+        # FIXME rewrite using with_frame context manager
         if hasattr(self.larch, 'interp'):
             # save current localGroup/moduleGroup 
             self.larch.symtable.save_frame()

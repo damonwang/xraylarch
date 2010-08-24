@@ -59,6 +59,40 @@ class TestLarchEnvErr(TestCase):
 
 #------------------------------------------------------------------------------
 
+class TestClosure(TestCase):
+    def setUp(self):
+        from larch.closure import Closure
+        TestCase.setUp(self)
+        self.c = Closure(dict,a=10)
+
+    def test_doc(self):
+        '''Closure reports function's docstring'''
+
+        self.assert_(self.c.__doc__ == self.c.func.__doc__)
+
+    def test_call_default(self):
+        '''Closure calls function with default args'''
+
+        self.assert_(self.c() == dict(a=10))
+
+    def test_call_null(self):
+        '''Closure returns None when function is None'''
+
+        from larch.closure import Closure 
+        self.assert_(Closure()() is None)
+
+    def test_call_override(self):
+        '''Closure overrides default args with called args'''
+
+        self.assert_(self.c(a=3) == dict(a=3))
+
+    def test_call_additionall(self):
+        '''Closure accepts additional args'''
+
+        self.assert_(self.c(b=4) == dict(a=10,b=4))
+
+#------------------------------------------------------------------------------
+
 class TestLarchImport(TestCase):
 
     def test_import(self):
