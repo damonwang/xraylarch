@@ -1,3 +1,7 @@
-This file documents API changes since July 2010.
+2010-08-24  damonwang
 
-Group.__len__ now returns the number of member symbols defined in the group 
+	* Group.__len__ now returns the number of member symbols defined in the
+	  group 
+	* The interpreter is now a callable object which, when catching an
+	exception, prints a stack trace built by examining the interpreter's
+	stack for on_call frames handling ast.Call nodes.

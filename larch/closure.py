@@ -21,20 +21,16 @@ class Closure(object):
     def __init__(self, func=None, **kwds):
         self.func = func
         self.kwds = kwds
+        self.__doc__ = func.__doc__
 
-    def __repr__(self):
+    def __repr__(self): # pragma: no cover
         return "<function %s>" % (self.func.__name__)
     __str__ = __repr__
 
-    def __doc__(self):
-        return self.func.__doc__
-    
     def __call__(self, *args, **c_kwds):
         if self.func is None:
             return None
         # avoid overwriting self.kwds here!!
-        kwds = {}
-        for key, val in list(self.kwds.items()):
-            kwds[key] = val
+        kwds = dict(self.kwds)
         kwds.update(c_kwds)
         return self.func(*args, **kwds)

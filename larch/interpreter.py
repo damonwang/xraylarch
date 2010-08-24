@@ -1,11 +1,13 @@
 '''Main Larch interpreter
 '''
-from __future__ import division, print_function, with_statement
+from __future__ import print_function, with_statement
 from contextlib import contextmanager
 import os
 import sys
 import ast
 from itertools import izip_longest, chain
+import traceback
+
 try:
     import numpy
     HAS_NUMPY = True
@@ -271,7 +273,8 @@ class Interpreter:
         if kwargs.get('debug', False) or self.debug: 
             try: yield
             except args, e:
-                self.raise_exception(None, msg=e.__class__.__name__, 
+                raise LarchExceptionHolder(None, msg=e.__class__.__name__,
+                        fname=self.fname, lineno=self.lineno, expr=self.expr,
                         py_exc=sys.exc_info())
         else: yield
         
@@ -317,7 +320,57 @@ class Interpreter:
             return ret
             
     def __call__(self, expr, **kw):
-        return self.eval(expr, **kw)
+        try: return self.eval(expr, **kw)
+        except: self.show_exc_info(sys.exc_info()[2])
+
+    def show_exc_info(self, tb):
+        '''formats and displays the traceback given.
+        
+        uses self.write() for output.'''
+
+        def tb_iter(tb):
+            while tb is not None:
+                yield tb
+                tb = tb.tb_next
+
+        def get_lines(fname, lineno, context=0):
+            wanted = range(lineno - context, lineno + context + 1)
+            print(lineno, context, wanted)
+            out = []
+
+            try:
+                with open(fname) as inf:
+                    out = [ line for i, line in enumerate(inf) if i in wanted ]
+            except IOError:
+                pass
+
+            print(out)
+            out = [ ('--> ' if i == context else '    ') + line 
+                    for i, line in enumerate(out) ]
+
+            return ''.join(out)
+
+        def format_frame(frame):
+            f_locals = frame.f_locals
+            func = map(str, f_locals.get('args', []))
+            func.extend([ "%s=%s" % (k,v)
+                    for k,v in f_locals.get('keywords', {}).items() ])
+            func = "%s(%s)" % (f_locals['node'].func.id, ', '.join(func))
+            lineno = f_locals['node'].lineno
+            # need lineno - 1 or it's off by one. zero vs. one-based indexing?
+            text = get_lines(self.fname, lineno - 1, 2) if self.fname else None
+            return (self.fname, lineno, func, text)
+
+        out = []
+
+        for t in tb_iter(tb):
+            if t.tb_frame.f_code.co_name == 'on_call':
+                out.append(format_frame(t.tb_frame))
+
+        traceback.print_list(out)
+
+    def write(self, s):
+        print(s)
         
     def eval(self, expr, fname=None, lineno=0, **kwargs):
         """evaluates a single statement"""
@@ -685,8 +738,8 @@ class Interpreter:
         "raise statement"
         msg = "%s: %s" % (self.interp(node.type).__name__,
                           self.interp(node.inst))
-        self.raise_exception(node.type, msg=msg,
-                             py_exc=sys.exc_info())
+        raise LarchExceptionHolder(node.type, msg=msg, fname=self.fname,
+                lineno=self.lineno, expr=self.expr, py_exc=sys.exc_info())
                     
     def on_call(self, node):
         "function/procedure execution"
