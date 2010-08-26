@@ -8,7 +8,6 @@ import ast
 from itertools import izip_longest, chain
 import traceback
 import pdb
-import ipython
 
 try:
     import numpy
@@ -272,7 +271,7 @@ class Interpreter:
         Unless self.debug is True, in which case it lets them pass.
         '''
 
-        if kwargs.get('debug', False) or self.debug:
+        if False: #not (kwargs.get('debug', False) or self.debug):
             try: yield
             except args, e:
                 raise LarchExceptionHolder(None, msg=e.__class__.__name__,
@@ -346,7 +345,7 @@ class Interpreter:
         self.lineno = lineno
         self.error = []
 
-        with self.catch(SyntaxError, debug=kwargs.get('debug', True)):
+        with self.catch(SyntaxError, debug=kwargs.get('debug', False)):
             node = self.compile(expr, fname=fname, lineno=lineno)
         # print("COMPILE ", ast.dump(node))
         return self.interp(node, expr=expr, fname=fname, lineno=lineno)
@@ -978,13 +977,13 @@ class StackTrace(object):
     def last_frame(self, tb=None, exc=None, call_info=None):
         tb, exc = tb or self.tb, exc or self.exc
         call_info = call_info or self.blank_call
-
-        #ipython.IPython.Shell.IPShell(user_ns=locals(), user_global_ns=globals()).mainloop()
-
-        return CallFrame(fname=exc.fname,
-                lineno=tb[-1].tb_frame.f_locals['node'].lineno, **call_info)
-
         
+        lineno = 0
+        for f in reversed(self.tb):
+            if f.tb_frame.f_code.co_name.startswith('on_'):
+                lineno = f.tb_frame.f_locals['node'].lineno
+                break
+        return CallFrame(fname=exc.fname, lineno=lineno, **call_info)
 
 #------------------------------------------------------------------------------
 
