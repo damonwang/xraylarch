@@ -7,6 +7,8 @@ import sys
 import ast
 from itertools import izip_longest, chain
 import traceback
+import pdb
+import ipython
 
 try:
     import numpy
@@ -270,7 +272,7 @@ class Interpreter:
         Unless self.debug is True, in which case it lets them pass.
         '''
 
-        if kwargs.get('debug', False) or self.debug: 
+        if kwargs.get('debug', False) or self.debug:
             try: yield
             except args, e:
                 raise LarchExceptionHolder(None, msg=e.__class__.__name__,
@@ -289,7 +291,8 @@ class Interpreter:
         if lineno != -4: # FIXME why not None as the meaningless default?
             self.lineno = lineno
         with self.catch(SyntaxError, debug=kwargs.get('debug', False)):
-            return ast.parse(text)
+            return AST_DefAttr(Call=dict(fname=fname)).visit(ast.parse(text))
+        
             
     def interp(self, node, expr=None, fname=None, lineno=None, **kwargs):
         """executes compiled Ast representation for an expression"""
@@ -321,53 +324,18 @@ class Interpreter:
             
     def __call__(self, expr, **kw):
         try: return self.eval(expr, **kw)
-        except: self.show_exc_info(sys.exc_info()[2])
+        except BaseException, e: 
+            #try:
+            self.show_exc_info(*sys.exc_info())
+            #xcept BaseException, new_e:
+            #   raise e
 
-    def show_exc_info(self, tb):
+    def show_exc_info(self, exc_type, exc_value, tb):
         '''formats and displays the traceback given.
         
         uses self.write() for output.'''
 
-        def tb_iter(tb):
-            while tb is not None:
-                yield tb
-                tb = tb.tb_next
-
-        def get_lines(fname, lineno, context=0):
-            wanted = range(lineno - context, lineno + context + 1)
-            print(lineno, context, wanted)
-            out = []
-
-            try:
-                with open(fname) as inf:
-                    out = [ line for i, line in enumerate(inf) if i in wanted ]
-            except IOError:
-                pass
-
-            print(out)
-            out = [ ('--> ' if i == context else '    ') + line 
-                    for i, line in enumerate(out) ]
-
-            return ''.join(out)
-
-        def format_frame(frame):
-            f_locals = frame.f_locals
-            func = map(str, f_locals.get('args', []))
-            func.extend([ "%s=%s" % (k,v)
-                    for k,v in f_locals.get('keywords', {}).items() ])
-            func = "%s(%s)" % (f_locals['node'].func.id, ', '.join(func))
-            lineno = f_locals['node'].lineno
-            # need lineno - 1 or it's off by one. zero vs. one-based indexing?
-            text = get_lines(self.fname, lineno - 1, 2) if self.fname else None
-            return (self.fname, lineno, func, text)
-
-        out = []
-
-        for t in tb_iter(tb):
-            if t.tb_frame.f_code.co_name == 'on_call':
-                out.append(format_frame(t.tb_frame))
-
-        traceback.print_list(out)
+        self.write(str(StackTrace(exc_value, tb, fname=self.fname)))
 
     def write(self, s):
         print(s)
@@ -900,3 +868,136 @@ class Interpreter:
         '''Return list of auto-completion keycodes.'''
 
         return map(ord, ['.'])
+
+#------------------------------------------------------------------------------
+
+class CallFrame(object):
+
+    '''represents a single Larch call frame, for dumping stack traces.
+
+    Note that this is not the real call frame used when executing larch code.
+    Larch interprets the parse tree one node at a time and does not have a
+    proper call frame. This class provides a convenience object for debugging
+    larch as though it had call frames.
+    '''
+
+    def __init__(self, **kwargs):
+
+        for attr, val in kwargs.items():
+            setattr(self, attr, val)
+
+    def __str__(self):
+        return ''.join(traceback.format_list([self.as_tuple()]))
+
+    def as_tuple(self):
+        '''returns this frame as a 4-tuple 
+            (filename, line number, function name, source code excerpt)
+        like the return from traceback.extract_tb()
+        '''
+        
+        if self.args or self.keywords:
+            args = '(%s)' % ', '.join( map(str, self.args) +
+                    [ '%s=%s' % (k,v) for k,v in self.keywords.items() ] )
+        else: args = ''
+
+        return self.fname, self.lineno, self.func + args, self.get_lines()
+        
+    def get_lines(self, fname=None, lineno=None, context=2):
+        fname, lineno = fname or self.fname, lineno or self.lineno
+        try:
+            with open(fname) as inf:
+                out = [ line for i, line in enumerate(inf) 
+                        if i in range(lineno - context - 1, lineno + context) ]
+        except IOError:
+            return
+        else: 
+            return ''.join([ ('--> ' if i == context else '    ') + line 
+                for i, line in enumerate(out) ])
+
+#------------------------------------------------------------------------------
+
+class StackTrace(object):
+
+    '''renders python traceback objects into Larch stack traces'''
+
+    blank_call = dict(func='placeholder', args=[], keywords={})
+
+    def __init__(self, exc, tb, **kwargs):
+
+        for attr, val in kwargs.items():
+            setattr(self, attr, val)
+        self.tb, self.exc = [ t for t in self.tb_iter(tb) ], exc 
+        self.frames = self.extract_frames(self.tb)
+
+    def __str__(self):
+
+        return ''.join(traceback.format_list([ f.as_tuple() 
+            for f in self.frames]))
+
+    def extract_frames(self, tb=None, exc=None):
+
+        '''given a python traceback, returns a list of larch CallFrame objects.
+
+        A python frame for the 'on_call' function has the location of the call
+        and the arguments to be passed into the call. So the arguments that
+        were passed into the frame where the call was made, came from the
+        previous 'on_call' frame. Hence the musical chairs with call_info and
+        this_call_info 
+        '''
+
+        tb, exc = tb or self.tb, exc or self.exc
+        rv, call_info = [], dict(func='__main__', args=[], keywords={})
+        for t in tb:
+            if t.tb_frame.f_code.co_name != 'on_call': continue
+            location_info, this_call_info = self.extract_frame(t.tb_frame)
+            location_info.update(call_info)
+            call_info = this_call_info
+            rv.append(CallFrame(**location_info))
+        # FIXME: make sure the LarchExceptionHolder exc gets created with
+        # useful fname and lineno attributes
+        rv.append(self.last_frame(tb, exc, call_info))
+        return rv
+
+    def extract_frame(self, frame):
+        f_locals, node = frame.f_locals, frame.f_locals['node']
+
+        # FIXME: at parse-time in the interpreter, do
+        #     code.__dict__['fname']='foo' 
+        # so we can pull the filename out of the f_locals['node'] object here
+        return (dict(lineno=f_locals['node'].lineno, 
+                    fname=node.fname if hasattr(node, 'fname') else None),
+                dict(args=f_locals.get('args', []),
+                    keywords=f_locals.get('keywords', {}),
+                    func=f_locals['node'].func.id))
+
+    def tb_iter(self, tb):
+        while tb is not None:
+            yield tb
+            tb = tb.tb_next
+
+    def last_frame(self, tb=None, exc=None, call_info=None):
+        tb, exc = tb or self.tb, exc or self.exc
+        call_info = call_info or self.blank_call
+
+        #ipython.IPython.Shell.IPShell(user_ns=locals(), user_global_ns=globals()).mainloop()
+
+        return CallFrame(fname=exc.fname,
+                lineno=tb[-1].tb_frame.f_locals['node'].lineno, **call_info)
+
+        
+
+#------------------------------------------------------------------------------
+
+class AST_DefAttr(ast.NodeTransformer):
+    def __init__(self, **kwargs):
+        for node, attrs in kwargs.items():
+            self.add_visit(node, attrs)
+
+    def add_visit(self, node, attrs):
+        def visitor(node):
+            self.generic_visit(node)
+            for attr, val in attrs.items():
+                if not hasattr(node, attr) or not getattr(node, attr) == val:
+                    node.__dict__[attr] = val
+            return node
+        setattr(self, 'visit_%s' % node, visitor)
